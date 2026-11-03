@@ -116,7 +116,8 @@ func writeCheckText(w io.Writer, file string, fs []model.Finding) error {
 	return err
 }
 
-type jsonFinding struct {
+// FindingView is one finding as rendered for JSON output and the GUI.
+type FindingView struct {
 	ID        string           `json:"id"`
 	Severity  string           `json:"severity"`
 	Message   string           `json:"message"`
@@ -125,7 +126,8 @@ type jsonFinding struct {
 	Notes     []string         `json:"notes"`
 }
 
-type jsonSummary struct {
+// Summary counts findings per severity.
+type Summary struct {
 	Error  int `json:"error"`
 	High   int `json:"high"`
 	Medium int `json:"medium"`
@@ -133,14 +135,16 @@ type jsonSummary struct {
 	Info   int `json:"info"`
 }
 
-type jsonCheck struct {
+// CheckResult is the rendered result of `check`: the JSON output of the CLI
+// and the value returned to the GUI.
+type CheckResult struct {
 	File     string        `json:"file"`
-	Findings []jsonFinding `json:"findings"`
-	Summary  jsonSummary   `json:"summary"`
+	Findings []FindingView `json:"findings"`
+	Summary  Summary       `json:"summary"`
 }
 
-func toJSONFinding(f model.Finding) jsonFinding {
-	jf := jsonFinding{
+func toFindingView(f model.Finding) FindingView {
+	jf := FindingView{
 		ID:        f.ID,
 		Severity:  f.Severity.String(),
 		Message:   findingMessage(f),
@@ -157,15 +161,36 @@ func toJSONFinding(f model.Finding) jsonFinding {
 	return jf
 }
 
-func writeCheckJSON(w io.Writer, file string, fs []model.Finding) error {
-	out := jsonCheck{File: file, Findings: []jsonFinding{}}
+// BuildCheckResult renders findings (already sorted, see
+// analyze.SortFindings) into a CheckResult, keeping their order.
+func BuildCheckResult(file string, fs []model.Finding) CheckResult {
+	out := CheckResult{File: file, Findings: []FindingView{}}
 	for _, f := range fs {
-		out.Findings = append(out.Findings, toJSONFinding(f))
+		out.Findings = append(out.Findings, toFindingView(f))
 	}
 	c := Counts(fs)
-	out.Summary = jsonSummary{Error: c[model.Error], High: c[model.High], Medium: c[model.Medium], Low: c[model.Low], Info: c[model.Info]}
-	return writeJSON(w, out)
+	out.Summary = Summary{Error: c[model.Error], High: c[model.High], Medium: c[model.Medium], Low: c[model.Low], Info: c[model.Info]}
+	return out
 }
+
+func writeCheckJSON(w io.Writer, file string, fs []model.Finding) error {
+	return writeJSON(w, BuildCheckResult(file, fs))
+}
+
+// Labels maps the codes used in CheckResult (severity enum, location role,
+// resolver level and source) to display names. Built by GUILabels.
+type Labels struct {
+	Severity       map[string]string `json:"severity"`
+	Role           map[string]string `json:"role"`
+	Level          map[string]string `json:"level"`
+	ResolverSource map[string]string `json:"resolver_source"`
+	Text           map[string]string `json:"text"` // other short strings, keyed by LabelText*
+}
+
+// Keys of Labels.Text.
+const (
+	LabelTextUnknownLine = "unknown_line" // location without a line number
+)
 
 func writeJSON(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)

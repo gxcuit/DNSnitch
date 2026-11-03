@@ -188,3 +188,48 @@ func TestResolverWordingAndAnnotation(t *testing.T) {
 		t.Errorf("json = %s", buf.String())
 	}
 }
+
+// TestBuildCheckResultMatchesJSON checks that the value returned to the GUI
+// serializes exactly like the CLI JSON output.
+func TestBuildCheckResultMatchesJSON(t *testing.T) {
+	fs := []model.Finding{
+		{ID: "DNS-02", Severity: model.Medium, Args: model.Args{"servers": "8.8.8.8"},
+			Locations: []model.Location{{File: "c.yaml", Line: 5, Text: "8.8.8.8", Role: model.RoleResolver}}},
+		{ID: "RULE-06", Severity: model.Info, Args: model.Args{"kind": "default"},
+			Notes: []model.Note{{Key: "system-proxy-scope"}}},
+	}
+	var cli, gui bytes.Buffer
+	if err := WriteCheck(&cli, FormatJSON, "c.yaml", fs); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeJSON(&gui, BuildCheckResult("c.yaml", fs)); err != nil {
+		t.Fatal(err)
+	}
+	if cli.String() != gui.String() {
+		t.Errorf("cli:\n%s\ngui:\n%s", cli.String(), gui.String())
+	}
+	r := BuildCheckResult("c.yaml", nil)
+	if r.Findings == nil || len(r.Findings) != 0 {
+		t.Errorf("empty findings must be a non-nil empty slice")
+	}
+}
+
+func TestGUILabels(t *testing.T) {
+	l := GUILabels()
+	for _, s := range model.Severities {
+		if l.Severity[s.String()] == "" {
+			t.Errorf("no label for severity %s", s)
+		}
+	}
+	for _, k := range []string{model.RoleTrigger, model.RoleTriggerEntry, model.RoleAffected, model.RoleResolver, model.RoleConfig, model.RoleRelated} {
+		if l.Role[k] == "" {
+			t.Errorf("no label for role %s", k)
+		}
+	}
+	if l.Level["plain"] == "" || l.ResolverSource[model.ResolverPolicy] == "" || l.Text[LabelTextUnknownLine] != labelUnknownLine {
+		t.Errorf("labels = %+v", l)
+	}
+	if ErrorText(ErrKindEncrypted, "") == "" || ErrorText(ErrKindSource, "x") == ErrorText(ErrKindArgs, "x") {
+		t.Errorf("GUI error kinds need their own text")
+	}
+}
