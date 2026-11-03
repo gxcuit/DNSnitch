@@ -1,0 +1,17 @@
+# AC9：没有 dns 段，IP 规则之后只有 MATCH 兜底。
+proxies:
+  - name: node
+    type: ss
+    server: node.example.com
+    port: 8388
+    cipher: aes-128-gcm
+    password: example
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies: [node]
+
+rules:
+  - GEOSITE,cn,DIRECT
+  - GEOIP,CN,DIRECT
+  - MATCH,PROXY

@@ -1,0 +1,23 @@
+# AC7：dns.nameserver-police 是 nameserver-policy 的笔误。
+proxies:
+  - name: node
+    type: ss
+    server: node.example.com
+    port: 8388
+    cipher: aes-128-gcm
+    password: example
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies: [node]
+
+dns:
+  enable: true
+  nameserver:
+    - https://1.1.1.1/dns-query#PROXY
+  nameserver-police:
+    "+.tailnet.ts.net": 100.100.100.100
+
+rules:
+  - GEOSITE,cn,DIRECT
+  - MATCH,PROXY

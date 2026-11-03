@@ -1,0 +1,18 @@
+# AC9：没有 dns 段，规则中有不带 no-resolve 的 IP 规则。
+proxies:
+  - name: node
+    type: ss
+    server: node.example.com
+    port: 8388
+    cipher: aes-128-gcm
+    password: example
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies: [node]
+
+rules:
+  - GEOSITE,cn,DIRECT
+  - GEOIP,CN,DIRECT
+  - DOMAIN-SUFFIX,google.com,PROXY
+  - MATCH,PROXY

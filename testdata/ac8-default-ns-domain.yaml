@@ -1,0 +1,23 @@
+# AC8：default-nameserver 含域名形式，mihomo 会加载失败。
+proxies:
+  - name: node
+    type: ss
+    server: node.example.com
+    port: 8388
+    cipher: aes-128-gcm
+    password: example
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies: [node]
+
+dns:
+  enable: true
+  default-nameserver:
+    - dns.alidns.com
+  nameserver:
+    - https://1.1.1.1/dns-query#PROXY
+
+rules:
+  - GEOSITE,cn,DIRECT
+  - MATCH,PROXY

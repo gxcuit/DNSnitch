@@ -1,0 +1,41 @@
+# AC14：规则集缓存为 .mrs（domain 与 ipcidr），缓存文件由测试生成。
+proxies:
+  - name: node
+    type: ss
+    server: node.example.com
+    port: 8388
+    cipher: aes-128-gcm
+    password: example
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies: [node]
+
+rule-providers:
+  google_domain:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://example.com/rules/google.mrs
+  telegram_ip:
+    type: http
+    behavior: ipcidr
+    format: mrs
+    url: https://example.com/rules/telegram-ip.mrs
+  local_domain:
+    type: file
+    behavior: domain
+    format: mrs
+    path: ./ruleset/local.mrs
+
+rules:
+  - RULE-SET,google_domain,PROXY
+  - RULE-SET,telegram_ip,PROXY
+  - RULE-SET,local_domain,PROXY
+  - MATCH,DIRECT
+
+dns:
+  enable: true
+  nameserver:
+    - 223.5.5.5
+    - https://doh.pub/dns-query

@@ -1,0 +1,53 @@
+# AC1 / AC10 / AC11：《DNS泄漏可能比你想的范围广…》中的「错误示范」。
+# GEOIP,private 没有 no-resolve，后面接指向代理的域名规则；nameserver 混入明文 8.8.8.8。
+mixed-port: 7890
+mode: rule
+
+proxies:
+  - name: 香港节点
+    type: ss
+    server: hk.example.com
+    port: 8388
+    cipher: aes-128-gcm
+    password: example
+
+proxy-groups:
+  - name: 🚀 默认代理
+    type: select
+    proxies: [香港节点]
+  - name: 🎯 全球直连
+    type: select
+    proxies: [DIRECT]
+  - name: _ Apple
+    type: select
+    proxies: [🎯 全球直连, 🚀 默认代理]
+  - name: 🐟 漏网之鱼
+    type: select
+    proxies: [🚀 默认代理, 🎯 全球直连]
+
+rule-providers:
+  apple_domain:
+    type: inline
+    behavior: domain
+    payload:
+      - '+.apple.com'
+      - '+.icloud.com'
+  google_domain:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/google.mrs
+
+rules:
+  - RULE-SET,apple_domain,_ Apple
+  - GEOIP,private,🎯 全球直连
+  - GEOSITE,youtube,🚀 默认代理
+  - RULE-SET,google_domain,🚀 默认代理
+  - MATCH,🐟 漏网之鱼
+
+dns:
+  enable: true
+  enhanced-mode: fake-ip
+  nameserver:
+    - 8.8.8.8
+    - https://doh.pub/dns-query

@@ -1,0 +1,5 @@
+age-encryption.org/v1
+-> X25519 bm90LWEtcmVhbC1rZXktanVzdC1hLXRlc3QtZml4dHVyZQ
+c2FtcGxlLXdyYXBwZWQta2V5LWZvci10ZXN0aW5nLW9ubHk
+--- dGVzdC1tYWM
+not real ciphertext, only the age header matters for detection

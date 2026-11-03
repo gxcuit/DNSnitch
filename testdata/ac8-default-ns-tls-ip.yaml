@@ -1,0 +1,23 @@
+# AC8：default-nameserver 为加密的 IP 形式，合法。
+proxies:
+  - name: node
+    type: ss
+    server: node.example.com
+    port: 8388
+    cipher: aes-128-gcm
+    password: example
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies: [node]
+
+dns:
+  enable: true
+  default-nameserver:
+    - tls://223.5.5.5
+  nameserver:
+    - https://1.1.1.1/dns-query#PROXY
+
+rules:
+  - GEOSITE,cn,DIRECT
+  - MATCH,PROXY

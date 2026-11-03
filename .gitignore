@@ -1,0 +1,11 @@
+# Built binaries
+/dnsleak
+/dnsleak.exe
+*.exe
+*.test
+/dist/
+/bin/
+
+# Go coverage / profiling output
+*.out
+coverage.*

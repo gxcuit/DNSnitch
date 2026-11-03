@@ -1,0 +1,22 @@
+# AC8：respect-rules: true 但没有 proxy-server-nameserver。
+proxies:
+  - name: node
+    type: ss
+    server: node.example.com
+    port: 8388
+    cipher: aes-128-gcm
+    password: example
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies: [node]
+
+dns:
+  enable: true
+  respect-rules: true
+  nameserver:
+    - https://1.1.1.1/dns-query
+
+rules:
+  - GEOSITE,cn,DIRECT
+  - MATCH,PROXY

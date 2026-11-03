@@ -1,0 +1,31 @@
+# AC5：同上，但引用处加了 no-resolve。
+proxies:
+  - name: node
+    type: ss
+    server: node.example.com
+    port: 8388
+    cipher: aes-128-gcm
+    password: example
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies: [node]
+
+rule-providers:
+  telegram:
+    type: inline
+    behavior: classical
+    payload:
+      - IP-CIDR,91.108.4.0/22
+      - DOMAIN-SUFFIX,telegram.org
+
+rules:
+  - RULE-SET,telegram,PROXY,no-resolve
+  - GEOSITE,google,PROXY
+  - MATCH,PROXY
+
+dns:
+  enable: true
+  nameserver:
+    - https://223.5.5.5/dns-query
+    - https://doh.pub/dns-query

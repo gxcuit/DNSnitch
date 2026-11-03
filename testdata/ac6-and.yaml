@@ -1,0 +1,22 @@
+# AC6：AND 中 IP 子规则前有域名条件，只对 a.com 下的域名触发解析。
+proxies:
+  - name: node
+    type: ss
+    server: node.example.com
+    port: 8388
+    cipher: aes-128-gcm
+    password: example
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies: [node]
+
+dns:
+  enable: true
+  nameserver:
+    - 114.114.114.114
+
+rules:
+  - AND,((DOMAIN-SUFFIX,a.com),(IP-CIDR,1.0.0.0/8)),DIRECT
+  - GEOSITE,google,PROXY
+  - MATCH,PROXY

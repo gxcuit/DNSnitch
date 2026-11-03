@@ -1,0 +1,22 @@
+# AC6：OR 的第一个子规则是 IP 规则，计为一定触发。
+proxies:
+  - name: node
+    type: ss
+    server: node.example.com
+    port: 8388
+    cipher: aes-128-gcm
+    password: example
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies: [node]
+
+dns:
+  enable: true
+  nameserver:
+    - 114.114.114.114
+
+rules:
+  - OR,((IP-CIDR,1.0.0.0/8),(DOMAIN,b.com)),DIRECT
+  - GEOSITE,google,PROXY
+  - MATCH,PROXY
