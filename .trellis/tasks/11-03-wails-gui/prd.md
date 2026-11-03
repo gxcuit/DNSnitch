@@ -45,13 +45,13 @@
 ## Acceptance Criteria
 
 - [x] AC1：选择 `testdata/ac1-geoip-without-no-resolve.yaml`，界面显示 RULE-01（高）与 DNS-02（中），汇总为「高 1、中 1」。
-- [ ] AC2：拖入同一文件得到相同结果（需在真实窗口中人工确认）。
+- [x] AC2：拖入同一文件得到相同结果（用户已在真实窗口中确认）。
 - [x] AC3：点击 RULE-01 的第一个「受影响」位置（`GEOSITE,youtube,…`），原文视图滚动到第 44 行并高亮。
 - [x] AC4：打开 `testdata/ac3-recommended.yaml`，显示「未发现泄露风险」。
 - [x] AC5：打开 `testdata/ac12-encrypted.yaml` 和一个非 YAML 文件，分别显示加密 / 解析失败说明，窗口可继续使用。
 - [x] AC6：GUI 展示的 Finding（ID、等级、文字、位置）与 `dnsleak check --format json` 对同一文件的输出一致。
 - [x] AC7：`go test ./...` 通过；`GOOS=linux` / `GOOS=darwin` 交叉编译 CLI 仍然成功。
-- [ ] AC8：Windows 上按文档命令构建出 GUI `.exe` 并能启动（启动需人工确认）。
+- [x] AC8：Windows 上按文档命令构建出 GUI `.exe` 并能启动（用户已确认可启动）。
 
 ## Out of Scope
 
