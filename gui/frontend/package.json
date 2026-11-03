@@ -1,0 +1,22 @@
+{
+  "name": "dnsleak-gui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "typecheck": "vue-tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@babel/types": "^7.26.0",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "typescript": "^5.6.3",
+    "vite": "^7.0.0",
+    "vue-tsc": "^3.3.14"
+  }
+}

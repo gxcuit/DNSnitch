@@ -489,9 +489,15 @@ const (
 	ErrKindFormat = "format"
 	ErrKindRead   = "read"
 	ErrKindParse  = "parse"
+	// ErrKindEncrypted is used by the GUI; the CLI reports CFG-02 instead.
+	ErrKindEncrypted = "encrypted"
+	// GUI source view: path not allowed / unreadable or too large / binary.
+	ErrKindSource       = "source"
+	ErrKindSourceRead   = "source-read"
+	ErrKindSourceBinary = "source-binary"
 )
 
-// ErrorText renders a command-line error.
+// ErrorText renders a command-line / GUI error.
 func ErrorText(kind, detail string) string {
 	switch kind {
 	case ErrKindFormat:
@@ -500,6 +506,15 @@ func ErrorText(kind, detail string) string {
 		return "错误：无法读取配置文件：" + detail
 	case ErrKindParse:
 		return "错误：无法解析配置文件（YAML 格式错误）：" + detail
+	case ErrKindEncrypted:
+		f := model.Finding{ID: "CFG-02"}
+		return "错误：" + findingMessage(f) + findingFix(f)
+	case ErrKindSource:
+		return "无法显示该文件：只能查看当前检查的配置文件及检查结果中引用的文件。" + detail
+	case ErrKindSourceRead:
+		return "无法读取该文件：" + detail
+	case ErrKindSourceBinary:
+		return "该文件是二进制格式（如 .mrs 规则集、GeoSite.dat），无法显示原文。" + detail
 	}
 	return "错误：参数不正确。" + detail + "\n\n" + UsageText()
 }
@@ -521,4 +536,43 @@ func resolverAnnotZh(r *model.ResolverInfo) string {
 		src += ": " + r.PolicyKey
 	}
 	return "→ " + zh(levelZh, r.Level) + "（" + src + "）"
+}
+
+// ---- GUI ----
+
+// GUIWindowTitle is the title of the desktop window.
+const GUIWindowTitle = "dnsleak — mihomo DNS 泄露检查"
+
+// Labels of the native open-file dialog.
+const (
+	GUIDialogTitle  = "选择 mihomo 配置文件"
+	GUIFilterConfig = "mihomo 配置（*.yaml, *.yml）"
+	GUIFilterAll    = "所有文件（*.*）"
+)
+
+// GUILabels returns the display names of the codes that appear in a
+// CheckResult, so the GUI does not repeat backend prose.
+func GUILabels() Labels {
+	l := Labels{
+		Severity:       map[string]string{},
+		Role:           map[string]string{},
+		Level:          map[string]string{},
+		ResolverSource: map[string]string{},
+		Text: map[string]string{
+			LabelTextUnknownLine: labelUnknownLine,
+		},
+	}
+	for s, name := range severityZh {
+		l.Severity[s.String()] = name
+	}
+	for k, v := range roleZh {
+		l.Role[k] = v
+	}
+	for k, v := range levelZh {
+		l.Level[k] = v
+	}
+	for k, v := range resolverSourceZh {
+		l.ResolverSource[k] = v
+	}
+	return l
 }

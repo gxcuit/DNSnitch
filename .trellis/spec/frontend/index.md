@@ -14,12 +14,14 @@ This directory contains guidelines for frontend development. Fill in each file w
 
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
-| [Component Guidelines](./component-guidelines.md) | Component patterns, props, composition | To fill |
-| [Hook Guidelines](./hook-guidelines.md) | Custom hooks, data fetching patterns | To fill |
-| [State Management](./state-management.md) | Local state, global state, server state | To fill |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
-| [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
+| [Directory Structure](./directory-structure.md) | `gui/frontend/` layout, generated `wailsjs/` | Filled |
+| [Component Guidelines](./component-guidelines.md) | `<script setup>` components, styling via CSS variables | Filled |
+| [Hook Guidelines](./hook-guidelines.md) | Composables (`useCheck`), sequence-guarded binding calls | Filled |
+| [State Management](./state-management.md) | All state in `useCheck()`, backend is source of truth | Filled |
+| [Quality Guidelines](./quality-guidelines.md) | Required checks, forbidden patterns, review checklist | Filled |
+| [Type Safety](./type-safety.md) | Types generated from Go by Wails | Filled |
+
+Stack: Wails v2.17.1 + Vue 3 + TypeScript + Vite (in `gui/frontend/`). Go-side contract: `.trellis/spec/backend/gui-bindings.md`.
 
 ---
 

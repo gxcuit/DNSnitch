@@ -1,51 +1,25 @@
 # Type Safety
 
-> Type safety patterns in this project.
-
----
-
-## Overview
-
-<!--
-Document your project's type safety conventions here.
-
-Questions to answer:
-- What type system do you use?
-- How are types organized?
-- What validation library do you use?
-- How do you handle type inference?
--->
-
-(To be filled by the team)
+> TypeScript types come from Go via Wails code generation.
 
 ---
 
 ## Type Organization
 
-<!-- Where types are defined, shared types vs local types -->
-
-(To be filled by the team)
-
----
+- Backend types are imported from the generated module: `import type {main, model, report} from '../../wailsjs/go/models'` and bindings from `wailsjs/go/main/App`.
+- Never hand-write a duplicate interface for a backend struct. Change the Go struct, run `wails generate module` (or `wails dev` / `wails build`), commit the regenerated `wailsjs/`.
+- Frontend-only types (e.g. `Selection`) live next to the code that owns them (`useCheck.ts`).
 
 ## Validation
 
-<!-- Runtime validation patterns (Zod, Yup, io-ts, etc.) -->
-
-(To be filled by the team)
-
----
+- Data from bindings is trusted to match the generated types (same build); the frontend does not re-validate it.
+- Optional fields (`location.resolver`, `GUIResult.result` / `.error`) must be narrowed before use.
 
 ## Common Patterns
 
-<!-- Type utilities, generics, type guards -->
-
-(To be filled by the team)
-
----
+- Codes are typed as `string` in generated models; keep known code lists as `as const` arrays (`SEVERITIES` in `labels.ts`).
 
 ## Forbidden Patterns
 
-<!-- any, type assertions, etc. -->
-
-(To be filled by the team)
+- Editing files under `wailsjs/` by hand (they are overwritten on the next build).
+- `any` for backend payloads.

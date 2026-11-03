@@ -15,7 +15,20 @@ GOOS=linux  GOARCH=amd64 go build ./...
 GOOS=darwin GOARCH=arm64 go build ./...
 ```
 
-Delete any binary you build (`*.exe`, `/dnsleak` are git-ignored but should not be left around).
+When `gui/` or anything it imports changed, also run:
+
+```bash
+export PATH="/c/Program Files/Go/bin:$HOME/go/bin:$PATH"   # wails CLI lives in $HOME/go/bin
+(cd gui && gofmt -l . && go vet ./... && go test ./...)
+(cd gui/frontend && npx vue-tsc --noEmit && npm run build)
+(cd gui && wails build)                                     # → gui/build/bin/dnsleak-gui.exe (git-ignored)
+```
+
+Delete any binary you build outside ignored dirs (`*.exe`, `/dnsleak` are git-ignored but should not be left around). Exception: the user may rely on `dnsleak.exe` in the repo root as their CLI build — rebuild it rather than leaving it deleted.
+
+> **Gotcha (Windows dev box)**: Smart App Control can block freshly built unsigned binaries (including `go test` binaries) for a few minutes with "An Application Control policy has blocked this file". Retry; it is not a code failure.
+
+> **Gotcha (line endings)**: global `core.autocrlf=true` is overridden by `.gitattributes` `* text=auto eol=lf`. Without it, checkouts turn `.go` files into CRLF and `gofmt -l` flags every file.
 
 ---
 

@@ -7,11 +7,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
-	"dnsleak/internal/analyze"
-	"dnsleak/internal/config"
+	"dnsleak/internal/app"
 	"dnsleak/internal/model"
 	"dnsleak/internal/report"
 	"dnsleak/internal/trace"
@@ -86,41 +84,21 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	file := o.args[0]
 
-	cfg, err := config.Load(file)
-	if err != nil {
-		switch {
-		case errors.Is(err, config.ErrEncrypted):
-			f := model.Finding{
-				ID: "CFG-02", Severity: model.Error,
-				Locations: []model.Location{{File: file, Role: model.RoleConfig}},
-			}
-			_ = report.WriteCheck(stdout, o.format, file, []model.Finding{f})
-		case isParseError(err):
-			fmt.Fprintln(stderr, report.ErrorText(report.ErrKindParse, err.Error()))
-		default:
-			fmt.Fprintln(stderr, report.ErrorText(report.ErrKindRead, err.Error()))
-		}
-		return 2
-	}
-
-	home := o.home
-	if home == "" {
-		abs, err := filepath.Abs(file)
-		if err != nil {
-			abs = file
-		}
-		home = filepath.Dir(abs)
-	}
-	env := analyze.NewEnv(cfg, home)
-
 	if cmd == "check" {
-		fs := env.Check()
-		if err := report.WriteCheck(stdout, o.format, file, fs); err != nil {
+		out := app.RunCheck(file, o.home)
+		if code, failed := reportLoadError(stdout, stderr, o.format, file, out.ErrKind, out.Err); failed {
+			return code
+		}
+		if err := report.WriteCheck(stdout, o.format, file, out.Findings); err != nil {
 			return 2
 		}
-		return report.ExitCode(fs)
+		return report.ExitCode(out.Findings)
 	}
 
+	env, kind, err := app.LoadEnv(file, o.home)
+	if code, failed := reportLoadError(stdout, stderr, o.format, file, kind, err); failed {
+		return code
+	}
 	res := trace.Run(env, o.args[1])
 	if err := report.WriteTrace(stdout, o.format, file, res); err != nil {
 		return 2
@@ -128,7 +106,18 @@ func run(args []string, stdout, stderr io.Writer) int {
 	return report.TraceExitCode(res)
 }
 
-func isParseError(err error) bool {
-	var pe *config.ParseError
-	return errors.As(err, &pe)
+// reportLoadError prints a config load failure and returns exit code 2 with
+// failed = true; it returns failed = false when kind is app.ErrNone.
+func reportLoadError(stdout, stderr io.Writer, format, file string, kind app.ErrorKind, err error) (int, bool) {
+	switch kind {
+	case app.ErrNone:
+		return 0, false
+	case app.ErrEncrypted:
+		_ = report.WriteCheck(stdout, format, file, []model.Finding{app.EncryptedFinding(file)})
+	case app.ErrParse:
+		fmt.Fprintln(stderr, report.ErrorText(report.ErrKindParse, err.Error()))
+	default:
+		fmt.Fprintln(stderr, report.ErrorText(report.ErrKindRead, err.Error()))
+	}
+	return 2, true
 }

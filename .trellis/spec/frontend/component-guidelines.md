@@ -1,59 +1,37 @@
 # Component Guidelines
 
-> How components are built in this project.
-
----
-
-## Overview
-
-<!--
-Document your project's component conventions here.
-
-Questions to answer:
-- What component patterns do you use?
-- How are props defined?
-- How do you handle composition?
-- What accessibility standards apply?
--->
-
-(To be filled by the team)
+> How Vue components are written in `gui/frontend/src/components/`.
 
 ---
 
 ## Component Structure
 
-<!-- Standard structure of a component file -->
-
-(To be filled by the team)
-
----
+- `<script setup lang="ts">` + `<template>` + `<style scoped>`; every component in this repo follows it.
+- Props via `defineProps<{...}>()` with generated types (`report.FindingView`, `model.Location`, `main.SourceFile`); events via typed `defineEmits<{...}>()`.
+- Components are presentational: no direct calls to `wailsjs/go/...` bindings. `App.vue` gets everything from `useCheck()` and passes it down.
 
 ## Props Conventions
 
-<!-- How props should be defined and typed -->
-
-(To be filled by the team)
-
----
+- Pass backend objects as-is; don't reshape findings into new view models.
+- Pass `labels: report.Labels | null` down and render codes with `label(labels, group, code)`; `null` labels must still render (falls back to the code).
 
 ## Styling Patterns
 
-<!-- How styles are applied (CSS modules, styled-components, Tailwind, etc.) -->
+- Colors only through CSS variables from `src/style.css` (`--bg`, `--panel`, `--fg`, `--accent`, `--sev-*`, `--highlight` …). Dark mode redefines the variables under `@media (prefers-color-scheme: dark)`; components never hard-code colors.
+- No UI component library.
+- Severity is shown as **text plus color** (badge text from labels), never color alone.
 
-(To be filled by the team)
+## Performance
 
----
+- `SourceView` renders only visible lines with a fixed row height (`ROW = 20` px) because rule-set files can be large; keep the fixed height if you change its CSS.
+- Location lists show the first 8 entries with a "show all" toggle.
 
 ## Accessibility
 
-<!-- A11y requirements and patterns -->
-
-(To be filled by the team)
-
----
+- Interactive elements are real `<button type="button">`; decorative elements (spinner) carry `aria-hidden="true"`.
+- Disabled states use the `disabled` attribute (e.g. 重新检查 without a file or while loading).
 
 ## Common Mistakes
 
-<!-- Component-related mistakes your team has made -->
-
-(To be filled by the team)
+- Re-sorting or filtering `result.findings` in a component — order is the backend's contract (same as CLI).
+- Writing Chinese finding/severity text in a component instead of using backend labels.

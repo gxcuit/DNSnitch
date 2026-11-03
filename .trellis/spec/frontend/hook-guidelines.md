@@ -1,51 +1,24 @@
-# Hook Guidelines
+# Composable Guidelines
 
-> How hooks are used in this project.
-
----
-
-## Overview
-
-<!--
-Document your project's hook conventions here.
-
-Questions to answer:
-- What custom hooks do you have?
-- How do you handle data fetching?
-- What are the naming conventions?
-- How do you share stateful logic?
--->
-
-(To be filled by the team)
+> Vue composables (this project's equivalent of hooks).
 
 ---
 
-## Custom Hook Patterns
+## Custom Composable Patterns
 
-<!-- How to create and structure custom hooks -->
+- One composable, `useCheck()` in `src/composables/useCheck.ts`, owns all app state and all calls to Go bindings (`Check`, `ChooseFile`, `ReadSource`, `Labels`).
+- Add a new composable only for an independent concern; don't split `useCheck` state across several composables that need to stay in sync.
 
-(To be filled by the team)
+## Data Fetching (calling Go bindings)
 
----
-
-## Data Fetching
-
-<!-- How data fetching is handled (React Query, SWR, etc.) -->
-
-(To be filled by the team)
-
----
+- Every async binding call is guarded by a sequence number (`checkSeq`, `sourceSeq`): results of a superseded request are dropped. Copy this pattern for any new async call.
+- Binding failures (rejected Promise) become a visible error with kind `INTERNAL_ERROR`; config problems arrive as `GUIResult.error` and are shown as-is.
+- Use `shallowRef` for large backend payloads (`CheckResult`, `SourceFile`); they are replaced, not mutated.
 
 ## Naming Conventions
 
-<!-- Hook naming rules (use*, etc.) -->
-
-(To be filled by the team)
-
----
+- `useXxx()` returning refs and action functions (`check`, `choose`, `recheck`, `onDropped`, `selectLocation`).
 
 ## Common Mistakes
 
-<!-- Hook-related mistakes your team has made -->
-
-(To be filled by the team)
+- Awaiting a binding and writing its result without checking that it is still the latest request → stale results overwrite newer ones when the user opens files quickly.

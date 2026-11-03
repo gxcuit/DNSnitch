@@ -17,6 +17,7 @@ This directory contains guidelines for backend development. Fill in each file wi
 | [Directory Structure](./directory-structure.md) | Go package layout and dependency direction | Filled |
 | [CLI Contract](./cli-contract.md) | `dnsleak` arguments, JSON output, exit codes | Filled |
 | [mihomo Behavior Contract](./mihomo-semantics.md) | Verified mihomo resolution semantics the checks rely on | Filled |
+| [GUI Binding Contract](./gui-bindings.md) | Wails-bound methods, `ReadSource` whitelist, drop wiring | Filled |
 | [Error Handling](./error-handling.md) | Error types, exit-2 vs findings, missing data | Filled |
 | [Quality Guidelines](./quality-guidelines.md) | Required checks, conventions, forbidden patterns | Filled |
 | [Database Guidelines](./database-guidelines.md) | ORM patterns, queries, migrations | N/A (no database) |

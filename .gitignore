@@ -9,3 +9,12 @@
 # Go coverage / profiling output
 *.out
 coverage.*
+
+# GUI (Wails) build output and frontend dependencies.
+# frontend/dist/.gitkeep stays tracked so `//go:embed all:frontend/dist`
+# compiles before the frontend is built (vite re-creates it from public/).
+gui/build/bin/
+gui/frontend/node_modules/
+gui/frontend/package.json.md5
+gui/frontend/dist/*
+!gui/frontend/dist/.gitkeep

@@ -6,7 +6,12 @@
 
 ## Overview
 
-`dnsleak` is a single Go module (`module dnsleak`, GPL-3.0) that builds one CLI binary. All logic lives under `internal/`; `cmd/dnsleak` only parses arguments, wires packages together and maps results to exit codes.
+The repo has two Go modules (GPL-3.0):
+
+- `module dnsleak` (root): the CLI and all check logic under `internal/`. Pure Go, no CGO, cross-compiles from Windows.
+- `module dnsleak/gui` (`gui/`, nested, `replace dnsleak => ../`): the Wails v2 desktop app. It may import `dnsleak/internal/...` (internal visibility is by import path). Root `./...` never includes it, so root checks and cross-compiles are unaffected by Wails/CGO.
+
+`cmd/dnsleak` only parses arguments and maps results to exit codes; `gui/app.go` only adapts results for the frontend. Both get results through `internal/app`.
 
 ---
 
@@ -14,6 +19,7 @@
 
 ```
 cmd/dnsleak/          CLI entry (main.go) + end-to-end acceptance tests (main_test.go)
+internal/app/         The check use case shared by CLI and GUI: RunCheck / LoadEnv / ErrorKind
 internal/model/       Plain data types (Config, Rule, RuleProvider, DNSServer, Finding, Location, Severity). Imports no internal package.
 internal/config/      File → age detection → yaml.v3 Node → model.Config (with line numbers); schema.go = known-key whitelist
 internal/ruleparse/   Rule string parsing (mirrors mihomo ParseRulePayload + logic-rule brackets)
@@ -25,6 +31,8 @@ internal/trace/       Single-domain simulation (reuses analyze.Env)
 internal/report/      Text (Chinese) and JSON renderers; messages_zh.go holds ALL user-facing prose
 internal/testutil/    Test helpers that generate .mrs and GeoSite.dat in-memory
 testdata/             Acceptance fixtures, named ac<N>-<case>.yaml
+gui/                  Nested module dnsleak/gui (Wails v2): main.go, app.go (bound methods), wails.json, README.md
+gui/frontend/         Vue 3 + TS app — see .trellis/spec/frontend/
 ```
 
 ---
@@ -34,7 +42,9 @@ testdata/             Acceptance fixtures, named ac<N>-<case>.yaml
 Dependency direction (no cycles; verify with `go list -deps`):
 
 ```
-cmd → report, trace, analyze, config
+gui (module dnsleak/gui) → app, report      (never the other way round)
+cmd → app, report, trace
+app → config, analyze, model                 (no report: prose stays out of the use case)
 trace → analyze
 analyze → policy, dnsserver, ruledata, ruleparse, model
 config → ruleparse, dnsserver, model

@@ -1,0 +1,5 @@
+{"file": ".trellis/tasks/11-03-wails-gui/research/environment-and-wails.md", "reason": "核对 Wails API 用法与构建约束"}
+{"file": ".trellis/spec/backend/cli-contract.md", "reason": "确认 CLI 行为未变"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "质量规范与必跑命令"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "检查跨层字段一致性"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "CLI 与 GUI 不应重复实现 check 流程"}
