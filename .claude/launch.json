@@ -1,0 +1,15 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "gui-dev",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-Command",
+        "$env:PATH = 'C:\\Program Files\\Go\\bin;' + $env:USERPROFILE + '\\go\\bin;' + $env:PATH; Set-Location gui; wails dev"
+      ],
+      "port": 34115
+    }
+  ]
+}

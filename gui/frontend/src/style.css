@@ -1,0 +1,99 @@
+:root {
+  color-scheme: light dark;
+  --font: 'Segoe UI', 'Microsoft YaHei UI', 'PingFang SC', 'Noto Sans CJK SC', system-ui, sans-serif;
+  --mono: 'Cascadia Mono', Consolas, 'SF Mono', Menlo, 'Noto Sans Mono CJK SC', monospace;
+
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --fg: #1f2328;
+  --muted: #656d76;
+  --border: #d0d7de;
+  --hover: #eef1f4;
+  --selected: #ddf4ff;
+  --accent: #0969da;
+  --code-bg: #ffffff;
+  --highlight: #fff3b0;
+  --veil: rgba(246, 247, 249, 0.82);
+  --ok: #1a7f37;
+
+  --sev-error: #cf222e;
+  --sev-high: #cf222e;
+  --sev-medium: #bc4c00;
+  --sev-low: #0969da;
+  --sev-info: #6e7781;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --fg: #e6edf3;
+    --muted: #8d96a0;
+    --border: #30363d;
+    --hover: #1f2630;
+    --selected: #12263f;
+    --accent: #4493f8;
+    --code-bg: #0d1117;
+    --highlight: #4a3f10;
+    --veil: rgba(13, 17, 23, 0.82);
+    --ok: #3fb950;
+
+    --sev-error: #f85149;
+    --sev-high: #f85149;
+    --sev-medium: #db6d28;
+    --sev-low: #4493f8;
+    --sev-info: #8d96a0;
+  }
+}
+
+/* Severity colour for any element carrying a sev-* class. */
+.sev-error { --sev-color: var(--sev-error); }
+.sev-high { --sev-color: var(--sev-high); }
+.sev-medium { --sev-color: var(--sev-medium); }
+.sev-low { --sev-color: var(--sev-low); }
+.sev-info { --sev-color: var(--sev-info); }
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 14px;
+}
+
+button {
+  font: inherit;
+  padding: 5px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+button.primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  background: var(--accent);
+}
