@@ -1,0 +1,5 @@
+{"file": ".trellis/tasks/11-02-config-dns-leak-check/research/mihomo-dns-semantics.md", "reason": "mihomo 源码核对后的规则解析与 DNS 解析语义，检查逻辑的唯一依据"}
+{"file": "docs/解决DNS泄露最佳实践——基于ClashMeta.md", "reason": "泄露定义与最佳实践来源"}
+{"file": "docs/Clash.Meta DNS 配置指南.md", "reason": "推荐配置样例（AC3 用例来源）与 GEOIP no-resolve 说明"}
+{"file": "docs/DNS泄漏可能比你想的范围广以及clash配置clash与tailscale 共同使用的配置.md", "reason": "错误示范规则与 clash-verge 默认覆写（AC1/AC4 用例来源）"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "避免检查器之间重复逻辑"}
