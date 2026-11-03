@@ -16,11 +16,11 @@ dnsleak help | -h | --help
 
 - Flags may appear before or after positional arguments.
 - `--home` defaults to the directory of the config file. Rule-provider `path`, the http cache `<home>/rules/<md5(url) hex>` and `<home>/GeoSite.dat` are resolved against it.
-- Entry point: `run(args []string, stdout, stderr io.Writer) int` in `cmd/dnsleak/main.go` (tests call it directly).
+- Entry point: `run(args []string, stdout, stderr io.Writer) int` in `cmd/dnsleak/main.go` (tests call it directly). `check` goes through `app.RunCheck(file, home)`, `trace` through `app.LoadEnv`; error classification (`read` / `parse` / `encrypted`) lives in `internal/app`, never in `main.go`.
 
 ## 3. Contracts
 
-**check JSON** (`report.writeCheckJSON`):
+**check JSON** (`report.BuildCheckResult` → `report.CheckResult`, written by `writeCheckJSON`). The GUI returns the very same `CheckResult` from its `Check` binding, so any field change here is also a GUI contract change (`gui-bindings.md`):
 
 | Field | Type | Notes |
 |---|---|---|

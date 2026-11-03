@@ -1,0 +1,6 @@
+{"file": ".trellis/tasks/11-03-wails-gui/research/environment-and-wails.md", "reason": "本机环境、Wails v2.17.1 已核实的 API、嵌套模块导入 internal 的验证"}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "包布局与依赖方向；新增 internal/app 与 gui/ 要遵守"}
+{"file": ".trellis/spec/backend/cli-contract.md", "reason": "CLI 输出与退出码不得因重构改变"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "提示文字集中、离线、跨平台、验证命令"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "读取 / 解析 / 加密三类错误的处理"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Go 结果结构 → Wails 绑定 → Vue 的数据流"}
