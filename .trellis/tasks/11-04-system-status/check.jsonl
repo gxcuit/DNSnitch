@@ -1,0 +1,4 @@
+{"file": ".trellis/tasks/11-04-system-status/research/tun-and-smart-resolution.md", "reason": "核对判定规则"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "必跑命令与禁止模式"}
+{"file": ".trellis/spec/backend/cli-contract.md", "reason": "CLI 契约"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "前端检查清单"}

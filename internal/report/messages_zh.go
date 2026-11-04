@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"dnsleak/internal/model"
+	"dnsleak/internal/platform"
 )
 
 // All user-facing prose lives in this file, keyed by finding ID / note key /
@@ -471,14 +472,18 @@ func UsageText() string {
 用法：
   dnsleak check [--format text|json] [--home 目录] <配置文件>
   dnsleak trace [--format text|json] [--home 目录] <配置文件> <域名>
+  dnsleak status [--format text|json]
+
+  status 只读检测本机状态：TUN 模式是否开启、Windows 智能多宿主名称解析是否已禁用。
+  不需要配置文件，不修改任何系统设置。
 
 参数：
   --format   输出格式，text（默认）或 json
   --home     mihomo 主目录，用于查找规则集缓存（rules/）与 GeoSite.dat；默认为配置文件所在目录
 
 退出码：
-  0  没有「错误 / 高 / 中」结果
-  1  有「错误 / 高 / 中」结果（trace：泄露等级为中及以上）
+  0  没有「错误 / 高 / 中」结果（status：没有发现必然泄露的组合）
+  1  有「错误 / 高 / 中」结果（trace：泄露等级为中及以上；status：TUN 已开启且未禁用智能多宿主名称解析）
   2  配置无法读取、无法解析或已加密；参数错误
 `
 }
@@ -575,4 +580,145 @@ func GUILabels() Labels {
 		l.ResolverSource[k] = v
 	}
 	return l
+}
+
+// ---- system status (dnsleak status, GUI status bar) ----
+
+const (
+	statusTitleSmart = "智能多宿主名称解析"
+	statusTitleTUN   = "TUN 模式"
+)
+
+var smartStateZh = map[string]string{
+	platform.StateDisabled:    "已禁用",
+	platform.StateEnabled:     "未禁用",
+	platform.StateUnknown:     "未知",
+	platform.StateUnsupported: "仅适用于 Windows",
+}
+
+var tunStateZh = map[string]string{
+	platform.StateOn:          "已开启",
+	platform.StateOff:         "未开启",
+	platform.StateUnknown:     "未知",
+	platform.StateUnsupported: "暂不支持",
+}
+
+var tunNoteZh = map[string]string{
+	platform.NoteAdapterNotEgress: "检测到虚拟网卡但流量未经过它（可能未开启 auto-route）",
+}
+
+var (
+	labelStatusHeader     = "系统状态（只读检测，不修改任何系统设置）"
+	labelStatusSep        = "："
+	labelStatusNote       = "注意："
+	labelStatusConclusion = "结论："
+	labelStatusFix        = "处理方法（仅供参考，本工具不会执行）："
+)
+
+func smartDetailZh(s platform.Snapshot) []string {
+	m := s.Smart
+	if m.State == platform.StateUnsupported {
+		return []string{"该设置只存在于 Windows（当前系统：" + s.OS + "）"}
+	}
+	out := []string{"注册表：" + m.KeyPath}
+	switch m.Reason {
+	case platform.ReasonValue:
+		out = append(out, fmt.Sprintf("%s = %d（REG_DWORD）", m.ValueName, *m.Value))
+	case platform.ReasonNotSet:
+		out = append(out, "未设置 "+m.ValueName+"（Windows 默认：未禁用）")
+	case platform.ReasonNotDWORD:
+		out = append(out, m.ValueName+" 的类型是 "+m.ValueType+"，应为 REG_DWORD，无法判断")
+	case platform.ReasonUnexpectedValue:
+		out = append(out, fmt.Sprintf("%s = %d（预期为 0 或 1），无法判断", m.ValueName, *m.Value))
+	case platform.ReasonReadError:
+		out = append(out, "无法读取注册表："+m.Error)
+	}
+	return out
+}
+
+// adapterZh renders an adapter as "名称（描述），IPv4：a, b".
+func adapterZh(a *platform.Adapter) string {
+	s := a.Name
+	if a.Description != "" && a.Description != a.Name {
+		s += "（" + a.Description + "）"
+	}
+	ips := "无"
+	if len(a.IPv4) > 0 {
+		ips = strings.Join(a.IPv4, ", ")
+	}
+	return s + "，IPv4：" + ips
+}
+
+func tunDetailZh(t platform.TUNStatus) []string {
+	switch t.Reason {
+	case platform.ReasonUnsupportedOS:
+		return []string{"目前只支持在 Windows 上检测 TUN 模式"}
+	case platform.ReasonNetError:
+		return []string{"无法读取网卡列表：" + t.Error}
+	}
+	var out []string
+	if t.Adapter != nil {
+		out = append(out, "wintun 虚拟网卡："+adapterZh(t.Adapter))
+		if t.Adapter.MatchedBy == platform.MatchedByFallback {
+			out = append(out, "识别依据：按备用规则判断（网卡类型 53 且描述以 Tunnel 结尾；未能读取驱动信息）")
+		} else {
+			out = append(out, "识别依据：网卡驱动 ComponentId 为 Wintun")
+		}
+	} else {
+		out = append(out, "未发现已启用的 wintun 虚拟网卡")
+	}
+	egress := "公网出口网卡（到 " + platform.EgressProbe + " 的路由）："
+	switch {
+	case t.Reason == platform.ReasonEgressError:
+		out = append(out, "无法查询公网出口网卡："+t.Error)
+	case t.Egress != nil:
+		out = append(out, egress+adapterZh(t.Egress))
+	case t.EgressIfIndex != 0:
+		out = append(out, fmt.Sprintf("%s接口编号 %d", egress, t.EgressIfIndex))
+	default:
+		out = append(out, egress+"无（可能未联网）")
+	}
+	return out
+}
+
+// conclusionZh explains the combined conclusion.
+func conclusionZh(code string, s platform.Snapshot) string {
+	const restart = "如果刚修改过该设置，需要重启系统后才生效（本工具无法判断是否已重启）。"
+	switch code {
+	case ConclusionUnsupported:
+		return "这种 DNS 泄露只发生在 Windows 的 TUN 模式下；当前系统暂不支持检测。"
+	case ConclusionRisk:
+		return "高风险：TUN 已开启，且未禁用智能多宿主名称解析。Windows 会同时向所有网卡发送 DNS 查询，发往物理网卡的查询不经过 TUN，必然发生 DNS 泄露（与 mihomo 配置无关）。请按下面的方法禁用该功能。"
+	case ConclusionProtected:
+		if s.TUN.State == platform.StateOn {
+			return "TUN 已开启，智能多宿主名称解析已禁用：系统不会绕过 TUN 向物理网卡发送 DNS 查询。" + restart
+		}
+		return "智能多宿主名称解析已禁用：开启 TUN 时不会因该功能发生 DNS 泄露。" + restart
+	case ConclusionTUNOff:
+		if s.Smart.State == platform.StateEnabled {
+			return "TUN 未开启：智能多宿主名称解析只在 TUN 模式下导致泄露，与本工具对配置文件的检查无关。但它目前未禁用，开启 TUN 前请先按下面的方法禁用，否则必然发生 DNS 泄露。"
+		}
+		if s.Smart.State == platform.StateUnknown {
+			return "TUN 未开启：智能多宿主名称解析只在 TUN 模式下导致泄露，与本工具对配置文件的检查无关。但无法确定它是否已禁用，开启 TUN 前请先确认（见下面的处理方法）。"
+		}
+		return "TUN 未开启：智能多宿主名称解析只在 TUN 模式下导致泄露，与本工具对配置文件的检查无关。"
+	}
+	switch {
+	case s.TUN.State == platform.StateOn:
+		return "TUN 已开启，但无法确定智能多宿主名称解析是否已禁用。如果未禁用，必然发生 DNS 泄露。"
+	case s.Smart.State == platform.StateEnabled:
+		return "无法确定 TUN 是否开启。智能多宿主名称解析未禁用：一旦开启 TUN，必然发生 DNS 泄露。"
+	}
+	return "无法确定 TUN 状态与智能多宿主名称解析设置，原因见上方说明。"
+}
+
+// smartFixZh is the remedy from the source article. It is display-only:
+// dnsleak never runs the command or changes any setting.
+var smartFixZh = []FixStep{
+	{Text: "非家庭版 Windows（专业版、企业版等）：打开开始菜单搜索「组策略」，打开「编辑组策略」，依次进入「计算机配置 → 管理模板 → 网络 → DNS 客户端」，双击「禁用智能多宿主名称解析」，选择「已启用」，点击「确定」。"},
+	{
+		Text:    "家庭版 Windows：在开始菜单搜索 CMD，右键「命令提示符」选择「以管理员身份运行」，粘贴下面的命令并按 Enter 执行，完成后重启系统：",
+		Command: `reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient" /v DisableSmartNameResolution /t REG_DWORD /d 1 /f`,
+	},
+	{Text: "两种方法修改的是同一个注册表值。修改后重启系统，再运行本检测确认显示「已禁用」。"},
 }

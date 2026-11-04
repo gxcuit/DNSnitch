@@ -26,15 +26,16 @@ gui/frontend/
     ├── style.css                       global CSS variables, light/dark themes
     ├── labels.ts                       label(labels, group, code), SEVERITIES, baseName()
     ├── i18n/zh.ts                      GUI chrome strings only
-    ├── composables/useCheck.ts         the single state owner (see state-management.md)
-    └── components/                     SummaryBar, FindingList, FindingCard, SourceView
+    ├── composables/useCheck.ts         config-check state owner (see state-management.md)
+    ├── composables/useSystemStatus.ts  system status (TUN / smart name resolution) state owner
+    └── components/                     SummaryBar, SystemStatusBar, FindingList, FindingCard, SourceView
 ```
 
 ---
 
 ## Module Organization
 
-- New UI piece → a component in `src/components/` that receives data via props and emits events; state changes go through `useCheck()`.
+- New UI piece → a component in `src/components/` that receives data via props and emits events; state changes go through the owning composable (`useCheck()` or `useSystemStatus()`).
 - New backend data → add it to the Go binding first, run `wails generate module`, then consume the generated type.
 - New chrome text → `src/i18n/zh.ts`. Backend-provided text (findings, severity/role/level names, error messages) must not be copied into the frontend.
 

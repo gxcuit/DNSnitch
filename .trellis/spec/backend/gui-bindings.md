@@ -13,7 +13,10 @@ func (a *App) ChooseFile() (string, error)              // native open dialog; "
 func (a *App) Check(path string) GUIResult              // absolutizes path, app.RunCheck(path, "")
 func (a *App) ReadSource(path string) (SourceFile, error)
 func (a *App) Labels() report.Labels                   // display names for codes
+func (a *App) SystemStatus() report.StatusView         // read-only TUN / smart name resolution status, same as `dnsleak status --format json`
 ```
+
+`SystemStatus` is independent of `Check` (no file needed); the frontend calls it once on mount and from the 刷新 button via `useSystemStatus()`. Its remedy text is display-only: no binding may change system settings.
 
 File drop is NOT a binding: the frontend calls the JS runtime `OnFileDrop(cb, false)` (only the JS call registers the window `drop` listener in Wails v2.17.1), then calls `Check(paths[0])`. `options.DragAndDrop{EnableFileDrop: true}`; keep `DisableWebViewDrop: false` (true blocks external drops in WebView2).
 

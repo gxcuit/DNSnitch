@@ -6,8 +6,9 @@
 
 ## Custom Composable Patterns
 
-- One composable, `useCheck()` in `src/composables/useCheck.ts`, owns all app state and all calls to Go bindings (`Check`, `ChooseFile`, `ReadSource`, `Labels`).
-- Add a new composable only for an independent concern; don't split `useCheck` state across several composables that need to stay in sync.
+- `useCheck()` (`src/composables/useCheck.ts`) owns the config-check state and the bindings `Check`, `ChooseFile`, `ReadSource`, `Labels`.
+- `useSystemStatus()` (`src/composables/useSystemStatus.ts`) owns the read-only system status and the `SystemStatus` binding; it loads on mount and on 刷新. It is the model for adding an independent concern.
+- Add a new composable only for an independent concern; don't split one concern's state across composables that need to stay in sync.
 
 ## Data Fetching (calling Go bindings)
 

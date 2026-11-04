@@ -11,6 +11,7 @@ import (
 
 	"dnsleak/internal/app"
 	"dnsleak/internal/model"
+	"dnsleak/internal/platform"
 	"dnsleak/internal/report"
 	"dnsleak/internal/trace"
 )
@@ -19,10 +20,14 @@ func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
+// inspectSystem reads the system status for `status`; tests replace it.
+var inspectSystem = platform.Inspect
+
 type options struct {
-	format string
-	home   string
-	args   []string
+	format  string
+	home    string
+	homeSet bool // --home given, even with an empty value
+	args    []string
 }
 
 // parseArgs parses flags that may appear before or after positional
@@ -44,6 +49,7 @@ func parseArgs(args []string) (*options, error) {
 		o.args = append(o.args, args[0])
 		args = args[1:]
 	}
+	fs.Visit(func(f *flag.Flag) { o.homeSet = o.homeSet || f.Name == "home" })
 	if o.format != report.FormatText && o.format != report.FormatJSON {
 		return nil, &formatError{o.format}
 	}
@@ -73,6 +79,18 @@ func run(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, report.ErrorText(report.ErrKindArgs, err.Error()))
 		}
 		return 2
+	}
+
+	if cmd == "status" {
+		if len(o.args) != 0 || o.homeSet {
+			fmt.Fprintln(stderr, report.ErrorText(report.ErrKindArgs, ""))
+			return 2
+		}
+		v := report.BuildStatusView(inspectSystem())
+		if err := report.WriteStatus(stdout, o.format, v); err != nil {
+			return 2
+		}
+		return report.StatusExitCode(v)
 	}
 
 	switch {

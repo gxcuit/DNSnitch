@@ -10,3 +10,5 @@ export function ChooseFile():Promise<string>;
 export function Labels():Promise<report.Labels>;
 
 export function ReadSource(arg1:string):Promise<main.SourceFile>;
+
+export function SystemStatus():Promise<report.StatusView>;

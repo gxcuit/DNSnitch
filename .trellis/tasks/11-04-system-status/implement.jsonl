@@ -1,0 +1,8 @@
+{"file": ".trellis/tasks/11-04-system-status/research/tun-and-smart-resolution.md", "reason": "注册表与 TUN 的检测依据、可用 API、采样结果"}
+{"file": "docs/Windows系统下Clash系代理软件虚拟网卡（TUN）模式的 DNS 泄露问题及解决方案 – 野生网管.md", "reason": "原文：泄露原因与处理方法文字"}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "internal/platform 扩展点与依赖方向"}
+{"file": ".trellis/spec/backend/cli-contract.md", "reason": "新增 status 子命令时保持 check/trace 不变"}
+{"file": ".trellis/spec/backend/gui-bindings.md", "reason": "新增 SystemStatus 绑定的约定"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "文字集中、跨平台、验证命令"}
+{"file": ".trellis/spec/frontend/hook-guidelines.md", "reason": "useSystemStatus 作为独立 composable"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "SystemStatusBar 组件写法与配色"}

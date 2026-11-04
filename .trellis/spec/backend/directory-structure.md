@@ -29,6 +29,7 @@ internal/ruledata/    Rule-provider data (yaml / text / mrs) and GeoSite.dat; lo
 internal/analyze/     Trigger classification, rule-chain scan, independent checks, severity matrix
 internal/trace/       Single-domain simulation (reuses analyze.Env)
 internal/report/      Text (Chinese) and JSON renderers; messages_zh.go holds ALL user-facing prose
+internal/platform/    Read-only OS inspection (TUN / smart name resolution): Facts → Decide() → Snapshot (codes only); inspect_windows.go / inspect_other.go
 internal/testutil/    Test helpers that generate .mrs and GeoSite.dat in-memory
 testdata/             Acceptance fixtures, named ac<N>-<case>.yaml
 gui/                  Nested module dnsleak/gui (Wails v2): main.go, app.go (bound methods), wails.json, README.md
@@ -42,8 +43,10 @@ gui/frontend/         Vue 3 + TS app — see .trellis/spec/frontend/
 Dependency direction (no cycles; verify with `go list -deps`):
 
 ```
-gui (module dnsleak/gui) → app, report      (never the other way round)
-cmd → app, report, trace
+gui (module dnsleak/gui) → app, report, platform   (never the other way round)
+cmd → app, report, trace, platform
+report → platform                            (data types only)
+platform → (nothing internal; stdlib + golang.org/x/sys)
 app → config, analyze, model                 (no report: prose stays out of the use case)
 trace → analyze
 analyze → policy, dnsserver, ruledata, ruleparse, model
