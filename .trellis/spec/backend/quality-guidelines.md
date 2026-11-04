@@ -43,6 +43,7 @@ Checks return `model.Finding{ID, Severity, Args, Notes{Key, Args}, Locations}`; 
 
 - Never fetch rule-providers, GeoSite or subscriptions. Missing data → mark unknown + add a note; never error out.
 - No OS APIs, no build tags in current packages; paths via `path/filepath` only; accept `\r\n` input.
+- Exception: `internal/platform` (system status) — OS access only in build-tagged `inspect_<os>.go`, strictly read-only. `readonly_test.go` enforces it with an import / API allow-list (aliases resolved) and requires every `registry.OpenKey` access mask to be built from `registry.QUERY_VALUE` / `ENUMERATE_SUB_KEYS` only; a new OS API must be added to that allow-list deliberately. Decision logic (`Decide`) stays pure and is tested on every OS.
 
 ### Convention: model mihomo, don't guess
 

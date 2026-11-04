@@ -11,8 +11,11 @@
 ```
 dnsleak check <config.yaml> [--format text|json] [--home <dir>]
 dnsleak trace <config.yaml> <domain> [--format text|json] [--home <dir>]
+dnsleak status [--format text|json]
 dnsleak help | -h | --help
 ```
+
+- `status` takes no positional argument and no `--home`; it inspects the machine read-only via `platform.Inspect()` (injectable as `inspectSystem` in `main.go` so tests never depend on the machine).
 
 - Flags may appear before or after positional arguments.
 - `--home` defaults to the directory of the config file. Rule-provider `path`, the http cache `<home>/rules/<md5(url) hex>` and `<home>/GeoSite.dat` are resolved against it.
@@ -44,6 +47,19 @@ Ordering: severity (error > high > medium > low > info), then first location lin
 | `verdict.code` | `leak` `redundant` `proxy` `direct` `reject` `hosts-proxy` `resolved-direct` |
 | `verdict` other | `severity` (leak only), `message`, `final_rule`, `final_target`, `final_class`, `uncertain`, `impact`, `unknown_steps[]`, `notes[]` |
 
+**status JSON** (`report.BuildStatusView` → `report.StatusView`; the GUI `SystemStatus` binding returns the same struct):
+
+| Field | Values |
+|---|---|
+| `os` | `runtime.GOOS` |
+| `smart.state` | `disabled` (safe) `enabled` (Windows default) `unknown` `unsupported` |
+| `tun.state` | `on` `off` `unknown` `unsupported` |
+| `smart` / `tun` other | `title`, `label` (display names), `reason` (`platform.Reason*` code), `detail[]` (evidence lines), `note` (`tun`: wintun present but not the egress) |
+| `risk` | true only for `tun.state = on` and `smart.state = enabled` |
+| `conclusion_code` | `risk` `protected` `tun-off` `unknown` `unsupported` |
+| `conclusion` | Chinese text |
+| `fix[]` | `{text, command?}` display-only remedy from the article; non-empty when `smart.state` is `enabled` or `unknown` |
+
 ## 4. Validation & Error Matrix
 
 | Condition | Output | Exit |
@@ -51,6 +67,9 @@ Ordering: severity (error > high > medium > low > info), then first location lin
 | no findings of error/high/medium | report | 0 |
 | any error/high/medium finding | report | 1 |
 | trace verdict = leak with severity ≥ medium | report | 1 |
+| status: TUN on + smart name resolution not disabled | report | 1 |
+| status: any other combination (incl. unknown / unsupported) | report | 0 |
+| status with a positional argument or `--home` | arg error on stderr | 2 |
 | no args / unknown subcommand / wrong arg count / empty domain | usage or arg error on stderr | 2 |
 | `--format` not text/json | error on stderr | 2 |
 | file unreadable | read error on stderr | 2 |

@@ -31,6 +31,10 @@
 - Interactive elements are real `<button type="button">`; decorative elements (spinner) carry `aria-hidden="true"`.
 - Disabled states use the `disabled` attribute (e.g. 重新检查 without a file or while loading).
 
+## Display-only commands
+
+`SystemStatusBar` shows fix commands (e.g. the `reg add …` line) as selectable `<code>` text under "仅供参考，本工具不会执行". Never add a button that runs, or copies-and-runs, a command: the tool is strictly read-only (backend `quality-guidelines.md`, `internal/platform` read-only tests).
+
 ## Common Mistakes
 
 - Re-sorting or filtering `result.findings` in a component — order is the backend's contract (same as CLI).

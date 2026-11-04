@@ -1,6 +1,6 @@
 # State Management
 
-> No Pinia, no router: all state lives in `useCheck()`.
+> No Pinia, no router. Config-check state lives in `useCheck()`; system status (TUN / smart name resolution) lives in `useSystemStatus()`. The two never share state.
 
 ---
 
