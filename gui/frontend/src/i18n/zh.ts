@@ -35,4 +35,13 @@ export const zh = {
     internal: '检查失败',
   } as Record<string, string>,
   errorHint: '可以修改配置后点击「重新检查」，或选择其他文件。',
+  // System status bar. Item names, state names, evidence, conclusion and
+  // remedy text come from the backend (StatusView).
+  systemStatus: '系统状态',
+  refreshStatus: '刷新',
+  statusChecking: '正在检测…',
+  statusFailed: (msg: string) => `系统状态检测失败：${msg}`,
+  statusItem: (title: string, label: string) => `${title}：${label}`,
+  statusEvidence: '检测依据',
+  statusFix: '处理方法（仅供参考，本工具不会执行）',
 }

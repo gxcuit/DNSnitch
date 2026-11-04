@@ -4,7 +4,9 @@ import {OnFileDrop, OnFileDropOff} from '../wailsjs/runtime/runtime'
 import FindingList from './components/FindingList.vue'
 import SourceView from './components/SourceView.vue'
 import SummaryBar from './components/SummaryBar.vue'
+import SystemStatusBar from './components/SystemStatusBar.vue'
 import {useCheck} from './composables/useCheck'
+import {useSystemStatus} from './composables/useSystemStatus'
 import {zh} from './i18n/zh'
 
 const {
@@ -12,6 +14,8 @@ const {
   selected, sourcePath, source, sourceError, sourceLoading, highlightLine, reveal, version,
   loadLabels, choose, recheck, onDropped, selectLocation,
 } = useCheck()
+
+const {status, statusError, statusLoading, refreshStatus} = useSystemStatus()
 
 // Drop overlay: dragenter / dragleave fire for every child element, so
 // count them. The dropped paths come from the Wails runtime (absolute).
@@ -30,6 +34,7 @@ function onDrop() {
 let dropRegistered = false
 onMounted(() => {
   void loadLabels()
+  void refreshStatus()
   window.addEventListener('dragenter', onDragEnter)
   window.addEventListener('dragleave', onDragLeave)
   window.addEventListener('drop', onDrop)
@@ -61,6 +66,12 @@ onBeforeUnmount(() => {
       :notice="notice"
       @choose="choose"
       @recheck="recheck"
+    />
+    <SystemStatusBar
+      :status="status"
+      :error="statusError"
+      :loading="statusLoading"
+      @refresh="refreshStatus"
     />
 
     <main class="body">

@@ -17,3 +17,7 @@ export function Labels() {
 export function ReadSource(arg1) {
   return window['go']['main']['App']['ReadSource'](arg1);
 }
+
+export function SystemStatus() {
+  return window['go']['main']['App']['SystemStatus']();
+}

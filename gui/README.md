@@ -6,7 +6,8 @@ dnsleak 的桌面窗口：选择或拖入一份 mihomo 配置文件，显示与 
 
 - `gui/` 是独立的 Go 模块 `dnsleak/gui`（`replace dnsleak => ../`），所以根目录的 `go vet ./...`、`go test ./...` 与交叉编译不会碰到 Wails / CGO 依赖。
 - 检查逻辑全部来自根模块：`internal/app.RunCheck` 执行检查，`internal/report.BuildCheckResult` 生成结果（与 `dnsleak check --format json` 同一个函数），所有提示文字都在 `internal/report/messages_zh.go`。
-- `app.go`：绑定给前端的方法 `ChooseFile` / `Check` / `ReadSource` / `Labels`。`ReadSource` 只能读取最近一次 `Check` 的配置文件以及检查结果中引用的文件；相对路径、其他文件都会被拒绝。
+- `app.go`：绑定给前端的方法 `ChooseFile` / `Check` / `ReadSource` / `Labels` / `SystemStatus`。`ReadSource` 只能读取最近一次 `Check` 的配置文件以及检查结果中引用的文件；相对路径、其他文件都会被拒绝。
+- 系统状态区（窗口顶部，`SystemStatusBar.vue` + `useSystemStatus.ts`）：启动时自动检测一次，点击「刷新」重新检测，与是否打开配置文件无关。显示「智能多宿主名称解析」是否已禁用、「TUN 模式」是否实际开启（存在已启用的 wintun 网卡且它是公网出口），以及两者的组合结论；TUN 已开启且未禁用时标红并展开处理方法。数据来自 `SystemStatus` 绑定，与 `dnsleak status --format json` 是同一个 `report.BuildStatusView`。检测完全只读（`internal/platform`）：处理方法只显示文字，界面上没有任何执行或修改系统设置的按钮。Linux / macOS 显示「暂不支持」。
 - `frontend/src/i18n/zh.ts`：界面自身的按钮、标题等文字。问题说明、等级名、角色名、错误说明都由后端提供，前端不重复、不改写、不重新排序。
 - `frontend/wailsjs/`：Wails 生成的绑定与 TS 类型（`wails build` / `wails dev` / `wails generate module` 会重新生成），不要手改。修改 `app.go` 的方法或返回结构后执行 `wails generate module` 并提交结果。
 
