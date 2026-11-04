@@ -55,3 +55,29 @@
 ### Status
 
 [OK] **Completed**
+
+
+## Session 3: 系统状态检测：TUN 与智能多宿主名称解析
+<!-- trellis-session: v=2 fp=b9438262ec854c9d -->
+
+**Date**: 2026-11-04
+**Task**: 系统状态检测：TUN 与智能多宿主名称解析
+**Branch**: `main`
+
+### Summary
+
+基于《Windows 系统下 Clash 系代理软件 TUN 模式的 DNS 泄露》文章，新增 internal/platform 只读检测：TUN 按 wintun 网卡（驱动 ComponentId=Wintun，备用规则 IfType 53 + 描述以 Tunnel 结尾）且为公网出口判断，智能多宿主名称解析读 DisableSmartNameResolution；AST 测试强制只读。新增 dnsleak status 与 GUI 顶部状态栏，TUN 开/关两种真实状态均在本机核对，7 条验收全部通过；更新前后端 spec。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c3f04ba` | feat: 新增只读系统状态检测与 dnsleak status 子命令 |
+| `c86117c` | feat(gui): 窗口顶部显示 TUN 与智能多宿主名称解析状态 |
+| `8212116` | docs: 新增 TUN 模式 DNS 泄露参考文章 |
+| `d6152c0` | docs(trellis): 系统状态任务规划与前后端 spec |
+| `ec44ae9` | Merge branch 'feat/system-status'：系统状态检测（TUN 与智能多宿主名称解析） |
+
+### Status
+
+[OK] **Completed**
