@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 1
-- **Last Active**: 2026-11-03
+- **Total Sessions**: 2
+- **Last Active**: 2026-11-04
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~30 | Active |
+| `journal-1.md` | ~57 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 2 | 2026-11-04 | dnsleak 桌面 GUI（Wails v2 + Vue 3） | `82fc6c9`, `1c5ccdb`, `22455f5`, `076e8c6`, `0f45d1f`, `8904d6d` | `main` |
 | 1 | 2026-11-03 | dnsleak P1：mihomo 配置 DNS 泄露静态检查 | `a2ce979`, `f065d37` | `main` |
 <!-- @@@/auto:session-history -->
 
