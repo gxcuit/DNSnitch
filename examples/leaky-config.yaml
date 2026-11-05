@@ -1,0 +1,23 @@
+# README 中的示例：GEOIP 规则没有 no-resolve，nameserver 里混着明文 DNS。
+# 运行 dnsnitch check examples/leaky-config.yaml 可以看到 RULE-01（高）和 DNS-02（中）。
+proxies:
+  - {name: hk, type: ss, server: hk.example.com, port: 8388, cipher: aes-128-gcm, password: example}
+
+proxy-groups:
+  - {name: PROXY, type: select, proxies: [hk]}
+  - {name: Apple, type: select, proxies: [DIRECT, PROXY]}
+
+rule-providers:
+  apple_domain: {type: inline, behavior: domain, payload: ['+.apple.com']}
+
+rules:
+  - RULE-SET,apple_domain,Apple
+  - GEOIP,private,DIRECT
+  - GEOSITE,youtube,PROXY
+  - MATCH,PROXY
+
+dns:
+  enable: true
+  nameserver:
+    - 8.8.8.8
+    - https://doh.pub/dns-query
