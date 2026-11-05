@@ -195,6 +195,10 @@ cd gui && wails build
 - DNS 泄漏可能比你想的范围广，以及 clash 与 tailscale 共同使用的配置
 - [Windows 系统下 Clash 系代理软件虚拟网卡（TUN）模式的 DNS 泄露问题及解决方案](https://wildprobe.com/soft-technical/dnsleak/)，野生网管
 
+## 致谢
+
+感谢 [LINUX DO](https://linux.do) 社区。
+
 ## 许可证
 
 [GPL-3.0](LICENSE)。读取 `.mrs` 规则集的代码来自 [mihomo](https://github.com/MetaCubeX/mihomo)。
