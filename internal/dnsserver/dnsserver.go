@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"strings"
 
-	"dnsleak/internal/model"
+	"dnsnitch/internal/model"
 )
 
 // Parse parses one server string. It fills Raw, Scheme, Host, ProxyName,

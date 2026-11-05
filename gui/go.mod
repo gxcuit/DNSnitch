@@ -1,9 +1,9 @@
-module dnsleak/gui
+module dnsnitch/gui
 
 go 1.27.3
 
 require (
-	dnsleak v0.0.0-00010101000000-000000000000
+	dnsnitch v0.0.0-00010101000000-000000000000
 	github.com/wailsapp/wails/v2 v2.17.1
 )
 
@@ -50,4 +50,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace dnsleak => ../
+replace dnsnitch => ../

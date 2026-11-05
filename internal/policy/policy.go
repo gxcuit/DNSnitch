@@ -2,7 +2,7 @@
 // direct / proxy / reject / pass (PRD R2, decision D7).
 package policy
 
-import "dnsleak/internal/model"
+import "dnsnitch/internal/model"
 
 // Builtin policies.
 var builtins = map[string]model.PolicyClass{

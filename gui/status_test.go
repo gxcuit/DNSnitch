@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"testing"
 
-	"dnsleak/internal/platform"
-	"dnsleak/internal/report"
+	"dnsnitch/internal/platform"
+	"dnsnitch/internal/report"
 )
 
 // TestSystemStatusMatchesCLI checks that the binding returns the same view
-// as `dnsleak status --format json` for the same (injected) facts.
+// as `dnsnitch status --format json` for the same (injected) facts.
 func TestSystemStatusMatchesCLI(t *testing.T) {
 	f := platform.Facts{
 		OS: platform.OSWindows,

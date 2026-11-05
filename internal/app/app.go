@@ -7,9 +7,9 @@ import (
 	"errors"
 	"path/filepath"
 
-	"dnsleak/internal/analyze"
-	"dnsleak/internal/config"
-	"dnsleak/internal/model"
+	"dnsnitch/internal/analyze"
+	"dnsnitch/internal/config"
+	"dnsnitch/internal/model"
 )
 
 // ErrorKind classifies why a config could not be analyzed.

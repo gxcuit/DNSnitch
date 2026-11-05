@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"dnsleak/internal/ruledata"
-	"dnsleak/internal/testutil"
+	"dnsnitch/internal/ruledata"
+	"dnsnitch/internal/testutil"
 )
 
 type jsonLoc struct {

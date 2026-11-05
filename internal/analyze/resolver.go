@@ -3,14 +3,14 @@ package analyze
 import (
 	"strings"
 
-	"dnsleak/internal/dnsserver"
-	"dnsleak/internal/model"
-	"dnsleak/internal/ruledata"
+	"dnsnitch/internal/dnsserver"
+	"dnsnitch/internal/model"
+	"dnsnitch/internal/ruledata"
 )
 
 // probeLabel is prepended to a DOMAIN-SUFFIX payload to test whether a
 // domain pattern covers its subdomains as well.
-const probeLabel = "dnsleak-probe."
+const probeLabel = "dnsnitch-probe."
 
 // coversRule reports whether a domain pattern (nameserver-policy /
 // fallback-filter key) statically covers every domain of a DOMAIN /

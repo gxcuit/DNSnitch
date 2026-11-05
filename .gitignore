@@ -1,6 +1,6 @@
 # Built binaries
-/dnsleak
-/dnsleak.exe
+/dnsnitch
+/dnsnitch.exe
 *.exe
 *.test
 /dist/

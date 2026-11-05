@@ -21,8 +21,8 @@ import (
 	"github.com/metacubex/mihomo/component/trie"
 	"gopkg.in/yaml.v3"
 
-	"dnsleak/internal/model"
-	"dnsleak/internal/ruleparse"
+	"dnsnitch/internal/model"
+	"dnsnitch/internal/ruleparse"
 )
 
 // Reason codes for unavailable provider data.

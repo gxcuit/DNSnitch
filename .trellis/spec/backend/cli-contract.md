@@ -1,25 +1,25 @@
-# CLI Contract: `dnsleak`
+# CLI Contract: `dnsnitch`
 
 > Executable contract for the command-line interface. Change this file together with any change to arguments, output shape or exit codes.
 
 ## 1. Scope / Trigger
 
-- Trigger: `dnsleak` is the only public interface. Scripts and CI rely on its exit codes and JSON fields.
+- Trigger: `dnsnitch` is the only public interface. Scripts and CI rely on its exit codes and JSON fields.
 
 ## 2. Signatures
 
 ```
-dnsleak check <config.yaml> [--format text|json] [--home <dir>]
-dnsleak trace <config.yaml> <domain> [--format text|json] [--home <dir>]
-dnsleak status [--format text|json]
-dnsleak help | -h | --help
+dnsnitch check <config.yaml> [--format text|json] [--home <dir>]
+dnsnitch trace <config.yaml> <domain> [--format text|json] [--home <dir>]
+dnsnitch status [--format text|json]
+dnsnitch help | -h | --help
 ```
 
 - `status` takes no positional argument and no `--home`; it inspects the machine read-only via `platform.Inspect()` (injectable as `inspectSystem` in `main.go` so tests never depend on the machine).
 
 - Flags may appear before or after positional arguments.
 - `--home` defaults to the directory of the config file. Rule-provider `path`, the http cache `<home>/rules/<md5(url) hex>` and `<home>/GeoSite.dat` are resolved against it.
-- Entry point: `run(args []string, stdout, stderr io.Writer) int` in `cmd/dnsleak/main.go` (tests call it directly). `check` goes through `app.RunCheck(file, home)`, `trace` through `app.LoadEnv`; error classification (`read` / `parse` / `encrypted`) lives in `internal/app`, never in `main.go`.
+- Entry point: `run(args []string, stdout, stderr io.Writer) int` in `cmd/dnsnitch/main.go` (tests call it directly). `check` goes through `app.RunCheck(file, home)`, `trace` through `app.LoadEnv`; error classification (`read` / `parse` / `encrypted`) lives in `internal/app`, never in `main.go`.
 
 ## 3. Contracts
 
@@ -87,7 +87,7 @@ Ordering: severity (error > high > medium > low > info), then first location lin
 
 ## 6. Tests Required
 
-- `cmd/dnsleak/main_test.go`: one e2e test per acceptance case asserting finding IDs, severities, line numbers of trigger/affected/resolver locations, and exit code.
+- `cmd/dnsnitch/main_test.go`: one e2e test per acceptance case asserting finding IDs, severities, line numbers of trigger/affected/resolver locations, and exit code.
 - `internal/report/report_test.go`: `TestProseOnlyInMessages` (no Chinese outside `messages_zh.go`), JSON field presence, both resolver wordings.
 - Any new flag or exit-code rule needs a `run(...)` test with captured stdout/stderr.
 

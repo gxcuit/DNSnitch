@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	"dnsleak/internal/dnsserver"
-	"dnsleak/internal/model"
-	"dnsleak/internal/ruledata"
+	"dnsnitch/internal/dnsserver"
+	"dnsnitch/internal/model"
+	"dnsnitch/internal/ruledata"
 )
 
 // affected is a set of domains that gets resolved and then proxied.

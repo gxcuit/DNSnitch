@@ -1,4 +1,4 @@
-// Command dnsleak-gui is the desktop window of dnsleak (Wails v2).
+// Command dnsnitch-gui is the desktop window of dnsnitch (Wails v2).
 package main
 
 import (
@@ -10,7 +10,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
-	"dnsleak/internal/report"
+	"dnsnitch/internal/report"
 )
 
 // assets is the built frontend. frontend/dist/.gitkeep is committed (and

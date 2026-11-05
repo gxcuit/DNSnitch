@@ -3,7 +3,7 @@ package policy
 import (
 	"testing"
 
-	"dnsleak/internal/model"
+	"dnsnitch/internal/model"
 )
 
 func group(name string, members ...string) model.ProxyGroup {

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"dnsleak/internal/platform"
+	"dnsnitch/internal/platform"
 )
 
 func mihomo() platform.Adapter {

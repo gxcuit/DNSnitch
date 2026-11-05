@@ -1,4 +1,4 @@
-// Command dnsleak statically checks a mihomo config for DNS leaks.
+// Command dnsnitch statically checks a mihomo config for DNS leaks.
 package main
 
 import (
@@ -9,11 +9,11 @@ import (
 	"os"
 	"strings"
 
-	"dnsleak/internal/app"
-	"dnsleak/internal/model"
-	"dnsleak/internal/platform"
-	"dnsleak/internal/report"
-	"dnsleak/internal/trace"
+	"dnsnitch/internal/app"
+	"dnsnitch/internal/model"
+	"dnsnitch/internal/platform"
+	"dnsnitch/internal/report"
+	"dnsnitch/internal/trace"
 )
 
 func main() {
@@ -34,7 +34,7 @@ type options struct {
 // arguments.
 func parseArgs(args []string) (*options, error) {
 	o := &options{}
-	fs := flag.NewFlagSet("dnsleak", flag.ContinueOnError)
+	fs := flag.NewFlagSet("dnsnitch", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	fs.StringVar(&o.format, "format", report.FormatText, "")
 	fs.StringVar(&o.home, "home", "", "")

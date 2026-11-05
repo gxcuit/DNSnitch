@@ -13,7 +13,7 @@ func (a *App) ChooseFile() (string, error)              // native open dialog; "
 func (a *App) Check(path string) GUIResult              // absolutizes path, app.RunCheck(path, "")
 func (a *App) ReadSource(path string) (SourceFile, error)
 func (a *App) Labels() report.Labels                   // display names for codes
-func (a *App) SystemStatus() report.StatusView         // read-only TUN / smart name resolution status, same as `dnsleak status --format json`
+func (a *App) SystemStatus() report.StatusView         // read-only TUN / smart name resolution status, same as `dnsnitch status --format json`
 ```
 
 `SystemStatus` is independent of `Check` (no file needed); the frontend calls it once on mount and from the 刷新 button via `useSystemStatus()`. Its remedy text is display-only: no binding may change system settings.
@@ -55,7 +55,7 @@ Concurrency: bound methods run concurrently. `ctx` is set once in `startup`; `se
 - `gui/app_test.go`: Check success / read / parse / encrypted; whitelist replacement by a later Check; stale results ignored; size and binary limits; symlink.
 - `gui/app_windows_test.go`: streams, `\\?\` / `\\.\`, trailing dot/space, 8.3 names, junctions.
 - `gui/prose_test.go`: no Chinese in non-test `gui/*.go`.
-- UI acceptance via `wails dev` + browser at `http://localhost:34115`: trigger the real drop path with `window.runtime.EventsEmit("wails:file-drop", x, y, [absPath])`; compare `await window.go.main.App.Check(p)` with `dnsleak check --format json` (same findings + summary).
+- UI acceptance via `wails dev` + browser at `http://localhost:34115`: trigger the real drop path with `window.runtime.EventsEmit("wails:file-drop", x, y, [absPath])`; compare `await window.go.main.App.Check(p)` with `dnsnitch check --format json` (same findings + summary).
 
 ## 7. Wrong vs Correct
 

@@ -4,7 +4,7 @@ import (
 	"net/netip"
 	"strings"
 
-	"dnsleak/internal/model"
+	"dnsnitch/internal/model"
 )
 
 // cnServers are well-known DNS services operated in mainland China.

@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	"dnsleak/internal/analyze"
-	"dnsleak/internal/dnsserver"
-	"dnsleak/internal/model"
-	"dnsleak/internal/trace"
+	"dnsnitch/internal/analyze"
+	"dnsnitch/internal/dnsserver"
+	"dnsnitch/internal/model"
+	"dnsnitch/internal/trace"
 )
 
 // Formats.

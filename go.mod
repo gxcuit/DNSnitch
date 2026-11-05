@@ -1,4 +1,4 @@
-module dnsleak
+module dnsnitch
 
 go 1.27.3
 

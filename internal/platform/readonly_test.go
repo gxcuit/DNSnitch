@@ -292,7 +292,7 @@ func TestImports(t *testing.T) {
 			if strings.HasPrefix(p, "golang.org/x/sys/") {
 				continue
 			}
-			if strings.Contains(first, ".") || p == "dnsleak" || strings.HasPrefix(p, "dnsleak/") {
+			if strings.Contains(first, ".") || p == "dnsnitch" || strings.HasPrefix(p, "dnsnitch/") {
 				t.Errorf("%s imports %s", f, p)
 			}
 		}

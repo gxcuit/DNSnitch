@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"dnsleak/internal/platform"
+	"dnsnitch/internal/platform"
 )
 
 // Combined conclusion codes of StatusView.ConclusionCode.
@@ -28,14 +28,14 @@ type StatusItem struct {
 }
 
 // FixStep is one display-only remedy step. Command is shown for the user
-// to copy; dnsleak never runs it.
+// to copy; dnsnitch never runs it.
 type FixStep struct {
 	Text    string `json:"text"`
 	Command string `json:"command,omitempty"`
 }
 
 // StatusView is the rendered system status: the JSON output of
-// `dnsleak status` and the value returned to the GUI.
+// `dnsnitch status` and the value returned to the GUI.
 type StatusView struct {
 	OS             string     `json:"os"`
 	Smart          StatusItem `json:"smart"`

@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"dnsleak/internal/config"
-	"dnsleak/internal/model"
-	"dnsleak/internal/ruleparse"
+	"dnsnitch/internal/config"
+	"dnsnitch/internal/model"
+	"dnsnitch/internal/ruleparse"
 )
 
 const head = `proxies:

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"dnsleak/internal/model"
+	"dnsnitch/internal/model"
 )
 
 func TestRunCheckOK(t *testing.T) {

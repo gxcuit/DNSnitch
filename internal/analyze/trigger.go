@@ -3,8 +3,8 @@ package analyze
 import (
 	"strings"
 
-	"dnsleak/internal/model"
-	"dnsleak/internal/ruleparse"
+	"dnsnitch/internal/model"
+	"dnsnitch/internal/ruleparse"
 )
 
 // Kind of resolution trigger (design §9.1).
