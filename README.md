@@ -148,23 +148,21 @@ $ dnsnitch check examples/leaky-config.yaml
 
 ## 下载
 
-到 [Releases 页面](https://github.com/gxcuit/DNSnitch/releases/latest) 下载最新版本，解压后就能用，不需要安装。
+当前版本 v0.1.0，历史版本见 [Releases](https://github.com/gxcuit/DNSnitch/releases)。
 
-| 文件 | 适用于 |
+| 版本 | 下载 |
 | --- | --- |
-| `dnsnitch-gui_<版本>_windows_amd64.zip` | Windows 桌面窗口（需要 WebView2，Windows 10/11 一般自带） |
-| `dnsnitch_<版本>_windows_amd64.zip` | Windows 命令行 |
-| `dnsnitch_<版本>_windows_arm64.zip` | Windows on ARM 命令行 |
-| `dnsnitch_<版本>_darwin_arm64.tar.gz` | macOS（Apple 芯片）命令行 |
-| `dnsnitch_<版本>_darwin_amd64.tar.gz` | macOS（Intel 芯片）命令行 |
-| `dnsnitch_<版本>_linux_amd64.tar.gz` | Linux x86_64 命令行 |
-| `dnsnitch_<版本>_linux_arm64.tar.gz` | Linux ARM64 命令行 |
+| Windows 桌面窗口 | [dnsnitch-gui_v0.1.0_windows_amd64.zip](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch-gui_v0.1.0_windows_amd64.zip) |
+| Windows 命令行（x64） | [dnsnitch_v0.1.0_windows_amd64.zip](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_windows_amd64.zip) |
+| Windows 命令行（ARM64） | [dnsnitch_v0.1.0_windows_arm64.zip](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_windows_arm64.zip) |
+| macOS 命令行（Apple 芯片） | [dnsnitch_v0.1.0_darwin_arm64.tar.gz](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_darwin_arm64.tar.gz) |
+| macOS 命令行（Intel） | [dnsnitch_v0.1.0_darwin_amd64.tar.gz](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_darwin_amd64.tar.gz) |
+| Linux 命令行（x86_64） | [dnsnitch_v0.1.0_linux_amd64.tar.gz](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_linux_amd64.tar.gz) |
+| Linux 命令行（ARM64） | [dnsnitch_v0.1.0_linux_arm64.tar.gz](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_linux_arm64.tar.gz) |
 
-`SHA256SUMS.txt` 是所有文件的校验值。
+校验值：[SHA256SUMS.txt](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/SHA256SUMS.txt)。main 分支的最新构建：[nightly](https://github.com/gxcuit/DNSnitch/releases/tag/nightly)。
 
-程序没有签名：Windows 第一次运行时可能弹出 SmartScreen 提示，点「更多信息」→「仍要运行」；macOS 提示「无法验证开发者」时，在终端执行 `xattr -d com.apple.quarantine ./dnsnitch` 后再运行。
-
-想试还没发布的最新改动，可以下载 [nightly 预发布](https://github.com/gxcuit/DNSnitch/releases/tag/nightly)。它由 main 分支的每次提交自动构建，没有经过发布前的测试。
+macOS 提示「无法验证开发者」时，执行 `xattr -d com.apple.quarantine ./dnsnitch`。
 
 ## 构建
 
