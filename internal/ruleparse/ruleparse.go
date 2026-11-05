@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"dnsleak/internal/model"
+	"dnsnitch/internal/model"
 )
 
 // knownTypes is the rule type set of rules/parser.go.

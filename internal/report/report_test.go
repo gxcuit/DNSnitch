@@ -10,7 +10,7 @@ import (
 	"testing"
 	"unicode"
 
-	"dnsleak/internal/model"
+	"dnsnitch/internal/model"
 )
 
 func TestExitCode(t *testing.T) {

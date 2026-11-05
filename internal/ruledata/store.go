@@ -3,7 +3,7 @@ package ruledata
 import (
 	"errors"
 
-	"dnsleak/internal/model"
+	"dnsnitch/internal/model"
 )
 
 // Reason codes for GeoSite lookups.

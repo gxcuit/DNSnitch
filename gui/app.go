@@ -13,9 +13,9 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"dnsleak/internal/app"
-	"dnsleak/internal/platform"
-	"dnsleak/internal/report"
+	"dnsnitch/internal/app"
+	"dnsnitch/internal/platform"
+	"dnsnitch/internal/report"
 )
 
 // maxSourceSize caps the size of a file shown in the source view.
@@ -77,13 +77,13 @@ func (a *App) Labels() report.Labels { return report.GUILabels() }
 
 // SystemStatus inspects TUN mode and smart multi-homed name resolution
 // (read-only) and renders them with report.BuildStatusView, the same
-// function as `dnsleak status --format json`. It is independent of Check.
+// function as `dnsnitch status --format json`. It is independent of Check.
 func (a *App) SystemStatus() report.StatusView {
 	return report.BuildStatusView(inspectSystem())
 }
 
 // Check analyzes the config at path (made absolute first). The findings are
-// built by report.BuildCheckResult, the same function as `dnsleak check
+// built by report.BuildCheckResult, the same function as `dnsnitch check
 // --format json`, so their order and text match the CLI.
 func (a *App) Check(path string) GUIResult {
 	if abs, err := filepath.Abs(path); err == nil {

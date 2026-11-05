@@ -1,6 +1,6 @@
 # Error Handling
 
-> How `dnsleak` handles bad input and internal failures.
+> How `dnsnitch` handles bad input and internal failures.
 
 ---
 

@@ -4,10 +4,10 @@ import (
 	"sort"
 	"strings"
 
-	"dnsleak/internal/config"
-	"dnsleak/internal/dnsserver"
-	"dnsleak/internal/model"
-	"dnsleak/internal/ruledata"
+	"dnsnitch/internal/config"
+	"dnsnitch/internal/dnsserver"
+	"dnsnitch/internal/model"
+	"dnsnitch/internal/ruledata"
 )
 
 // Valid key lists for suggestions, by section.

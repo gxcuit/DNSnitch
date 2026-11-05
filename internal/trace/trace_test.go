@@ -5,11 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	"dnsleak/internal/analyze"
-	"dnsleak/internal/config"
-	"dnsleak/internal/dnsserver"
-	"dnsleak/internal/model"
-	"dnsleak/internal/testutil"
+	"dnsnitch/internal/analyze"
+	"dnsnitch/internal/config"
+	"dnsnitch/internal/dnsserver"
+	"dnsnitch/internal/model"
+	"dnsnitch/internal/testutil"
 )
 
 const head = `proxies:

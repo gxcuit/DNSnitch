@@ -7,7 +7,7 @@ import (
 
 	"github.com/metacubex/mihomo/component/trie"
 
-	"dnsleak/internal/model"
+	"dnsnitch/internal/model"
 )
 
 // MatchDomainRule evaluates a host-name rule (DOMAIN, DOMAIN-SUFFIX,

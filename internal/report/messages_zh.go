@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"dnsleak/internal/model"
-	"dnsleak/internal/platform"
+	"dnsnitch/internal/model"
+	"dnsnitch/internal/platform"
 )
 
 // All user-facing prose lives in this file, keyed by finding ID / note key /
@@ -467,12 +467,12 @@ var (
 
 // UsageText is the command-line help.
 func UsageText() string {
-	return `dnsleak —— mihomo 配置文件 DNS 泄露静态检查（离线，不运行 mihomo）
+	return `猫捉漏 DNSnitch —— Clash / mihomo 配置文件 DNS 泄露检测（离线，不运行 mihomo）
 
 用法：
-  dnsleak check [--format text|json] [--home 目录] <配置文件>
-  dnsleak trace [--format text|json] [--home 目录] <配置文件> <域名>
-  dnsleak status [--format text|json]
+  dnsnitch check [--format text|json] [--home 目录] <配置文件>
+  dnsnitch trace [--format text|json] [--home 目录] <配置文件> <域名>
+  dnsnitch status [--format text|json]
 
   status 只读检测本机状态：TUN 模式是否开启、Windows 智能多宿主名称解析是否已禁用。
   不需要配置文件，不修改任何系统设置。
@@ -546,7 +546,7 @@ func resolverAnnotZh(r *model.ResolverInfo) string {
 // ---- GUI ----
 
 // GUIWindowTitle is the title of the desktop window.
-const GUIWindowTitle = "dnsleak — mihomo DNS 泄露检查"
+const GUIWindowTitle = "猫捉漏 DNSnitch — Clash 配置 DNS 泄露检测"
 
 // Labels of the native open-file dialog.
 const (
@@ -582,7 +582,7 @@ func GUILabels() Labels {
 	return l
 }
 
-// ---- system status (dnsleak status, GUI status bar) ----
+// ---- system status (dnsnitch status, GUI status bar) ----
 
 const (
 	statusTitleSmart = "智能多宿主名称解析"
@@ -713,7 +713,7 @@ func conclusionZh(code string, s platform.Snapshot) string {
 }
 
 // smartFixZh is the remedy from the source article. It is display-only:
-// dnsleak never runs the command or changes any setting.
+// dnsnitch never runs the command or changes any setting.
 var smartFixZh = []FixStep{
 	{Text: "非家庭版 Windows（专业版、企业版等）：打开开始菜单搜索「组策略」，打开「编辑组策略」，依次进入「计算机配置 → 管理模板 → 网络 → DNS 客户端」，双击「禁用智能多宿主名称解析」，选择「已启用」，点击「确定」。"},
 	{

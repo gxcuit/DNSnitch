@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"dnsleak/internal/app"
+	"dnsnitch/internal/app"
 )
 
 const ruleSetConfig = `proxies:

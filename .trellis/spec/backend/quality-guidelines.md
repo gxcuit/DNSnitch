@@ -1,6 +1,6 @@
 # Quality Guidelines
 
-> Code standards for `dnsleak`.
+> Code standards for `dnsnitch`.
 
 ---
 
@@ -21,10 +21,10 @@ When `gui/` or anything it imports changed, also run:
 export PATH="/c/Program Files/Go/bin:$HOME/go/bin:$PATH"   # wails CLI lives in $HOME/go/bin
 (cd gui && gofmt -l . && go vet ./... && go test ./...)
 (cd gui/frontend && npx vue-tsc --noEmit && npm run build)
-(cd gui && wails build)                                     # → gui/build/bin/dnsleak-gui.exe (git-ignored)
+(cd gui && wails build)                                     # → gui/build/bin/dnsnitch-gui.exe (git-ignored)
 ```
 
-Delete any binary you build outside ignored dirs (`*.exe`, `/dnsleak` are git-ignored but should not be left around). Exception: the user may rely on `dnsleak.exe` in the repo root as their CLI build — rebuild it rather than leaving it deleted.
+Delete any binary you build outside ignored dirs (`*.exe`, `/dnsnitch` are git-ignored but should not be left around). Exception: the user may rely on `dnsnitch.exe` in the repo root as their CLI build — rebuild it rather than leaving it deleted.
 
 > **Gotcha (Windows dev box)**: Smart App Control can block freshly built unsigned binaries (including `go test` binaries) for a few minutes with "An Application Control policy has blocked this file". Retry; it is not a code failure.
 

@@ -6,10 +6,10 @@ package analyze
 import (
 	"sort"
 
-	"dnsleak/internal/dnsserver"
-	"dnsleak/internal/model"
-	"dnsleak/internal/policy"
-	"dnsleak/internal/ruledata"
+	"dnsnitch/internal/dnsserver"
+	"dnsnitch/internal/model"
+	"dnsnitch/internal/policy"
+	"dnsnitch/internal/ruledata"
 )
 
 // Env bundles everything derived from one config; shared with trace.

@@ -1,6 +1,6 @@
 # Directory Structure
 
-> How the `dnsleak` Go code is organized.
+> How the `dnsnitch` Go code is organized.
 
 ---
 
@@ -8,17 +8,17 @@
 
 The repo has two Go modules (GPL-3.0):
 
-- `module dnsleak` (root): the CLI and all check logic under `internal/`. Pure Go, no CGO, cross-compiles from Windows.
-- `module dnsleak/gui` (`gui/`, nested, `replace dnsleak => ../`): the Wails v2 desktop app. It may import `dnsleak/internal/...` (internal visibility is by import path). Root `./...` never includes it, so root checks and cross-compiles are unaffected by Wails/CGO.
+- `module dnsnitch` (root): the CLI and all check logic under `internal/`. Pure Go, no CGO, cross-compiles from Windows.
+- `module dnsnitch/gui` (`gui/`, nested, `replace dnsnitch => ../`): the Wails v2 desktop app. It may import `dnsnitch/internal/...` (internal visibility is by import path). Root `./...` never includes it, so root checks and cross-compiles are unaffected by Wails/CGO.
 
-`cmd/dnsleak` only parses arguments and maps results to exit codes; `gui/app.go` only adapts results for the frontend. Both get results through `internal/app`.
+`cmd/dnsnitch` only parses arguments and maps results to exit codes; `gui/app.go` only adapts results for the frontend. Both get results through `internal/app`.
 
 ---
 
 ## Directory Layout
 
 ```
-cmd/dnsleak/          CLI entry (main.go) + end-to-end acceptance tests (main_test.go)
+cmd/dnsnitch/         CLI entry (main.go) + end-to-end acceptance tests (main_test.go)
 internal/app/         The check use case shared by CLI and GUI: RunCheck / LoadEnv / ErrorKind
 internal/model/       Plain data types (Config, Rule, RuleProvider, DNSServer, Finding, Location, Severity). Imports no internal package.
 internal/config/      File → age detection → yaml.v3 Node → model.Config (with line numbers); schema.go = known-key whitelist
@@ -32,7 +32,7 @@ internal/report/      Text (Chinese) and JSON renderers; messages_zh.go holds AL
 internal/platform/    Read-only OS inspection (TUN / smart name resolution): Facts → Decide() → Snapshot (codes only); inspect_windows.go / inspect_other.go
 internal/testutil/    Test helpers that generate .mrs and GeoSite.dat in-memory
 testdata/             Acceptance fixtures, named ac<N>-<case>.yaml
-gui/                  Nested module dnsleak/gui (Wails v2): main.go, app.go (bound methods), wails.json, README.md
+gui/                  Nested module dnsnitch/gui (Wails v2): main.go, app.go (bound methods), wails.json, README.md
 gui/frontend/         Vue 3 + TS app — see .trellis/spec/frontend/
 ```
 
@@ -43,7 +43,7 @@ gui/frontend/         Vue 3 + TS app — see .trellis/spec/frontend/
 Dependency direction (no cycles; verify with `go list -deps`):
 
 ```
-gui (module dnsleak/gui) → app, report, platform   (never the other way round)
+gui (module dnsnitch/gui) → app, report, platform   (never the other way round)
 cmd → app, report, trace, platform
 report → platform                            (data types only)
 platform → (nothing internal; stdlib + golang.org/x/sys)
@@ -65,7 +65,7 @@ model → (nothing internal)
 
 - Finding IDs: `RULE-NN`, `DNS-NN`, `CFG-NN` (two digits, never reused).
 - Fixtures: `testdata/ac<acceptance#>-<short-case>.yaml`.
-- Binary name: `dnsleak` (`dnsleak.exe` on Windows); built binaries are git-ignored.
+- Binary name: `dnsnitch` (`dnsnitch.exe` on Windows); built binaries are git-ignored.
 
 ---
 

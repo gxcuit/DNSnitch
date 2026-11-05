@@ -3,7 +3,7 @@ package dnsserver
 import (
 	"testing"
 
-	"dnsleak/internal/model"
+	"dnsnitch/internal/model"
 )
 
 func TestParse(t *testing.T) {

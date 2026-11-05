@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"dnsleak/internal/platform"
+	"dnsnitch/internal/platform"
 )
 
 // withFacts makes `status` see the given facts instead of the machine.
@@ -142,7 +142,7 @@ func TestStatusArgs(t *testing.T) {
 	if out, code := runCLI(t, "status", "--format", "json"); code != 0 || !strings.HasPrefix(out, "{") {
 		t.Errorf("json: exit %d %q", code, out)
 	}
-	if out, code := runCLI(t, "help"); code != 0 || !strings.Contains(out, "dnsleak status") {
+	if out, code := runCLI(t, "help"); code != 0 || !strings.Contains(out, "dnsnitch status") {
 		t.Errorf("usage lacks status: %d\n%s", code, out)
 	}
 }

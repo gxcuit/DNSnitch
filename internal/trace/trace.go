@@ -4,11 +4,11 @@ package trace
 import (
 	"strings"
 
-	"dnsleak/internal/analyze"
-	"dnsleak/internal/dnsserver"
-	"dnsleak/internal/model"
-	"dnsleak/internal/ruledata"
-	"dnsleak/internal/ruleparse"
+	"dnsnitch/internal/analyze"
+	"dnsnitch/internal/dnsserver"
+	"dnsnitch/internal/model"
+	"dnsnitch/internal/ruledata"
+	"dnsnitch/internal/ruleparse"
 )
 
 // Outcome of one step.

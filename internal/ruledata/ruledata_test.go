@@ -11,8 +11,8 @@ import (
 
 	"github.com/klauspost/compress/zstd"
 
-	"dnsleak/internal/model"
-	"dnsleak/internal/testutil"
+	"dnsnitch/internal/model"
+	"dnsnitch/internal/testutil"
 )
 
 func write(t *testing.T, path string, data []byte) {
