@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -228,8 +230,15 @@ func TestAC3RecommendedConfig(t *testing.T) {
 // TestAC3RecommendedConfigFromDoc runs the recommended config exactly as
 // published in docs/Clash.Meta DNS 配置指南.md. The document omits proxies,
 // so only the policies its rules name are appended.
+//
+// The guide is a local copy of a third-party article and is not in the
+// repository (see .gitignore), so the test is skipped where it is absent,
+// e.g. in CI. TestAC3RecommendedConfig covers the same case from testdata.
 func TestAC3RecommendedConfigFromDoc(t *testing.T) {
 	doc, err := os.ReadFile(filepath.Join("..", "..", "docs", "Clash.Meta DNS 配置指南.md"))
+	if errors.Is(err, fs.ErrNotExist) {
+		t.Skip("docs/Clash.Meta DNS 配置指南.md not present (local-only reference copy)")
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
