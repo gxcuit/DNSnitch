@@ -146,6 +146,26 @@ $ dnsnitch check examples/leaky-config.yaml
 
 有错误、高、中任意一项时，命令行退出码是 1，窗口里显示「发现需要处理的问题」。只有低和提示时显示「未发现泄露风险」。
 
+## 下载
+
+到 [Releases 页面](https://github.com/gxcuit/DNSnitch/releases/latest) 下载最新版本，解压后就能用，不需要安装。
+
+| 文件 | 适用于 |
+| --- | --- |
+| `dnsnitch-gui_<版本>_windows_amd64.zip` | Windows 桌面窗口（需要 WebView2，Windows 10/11 一般自带） |
+| `dnsnitch_<版本>_windows_amd64.zip` | Windows 命令行 |
+| `dnsnitch_<版本>_windows_arm64.zip` | Windows on ARM 命令行 |
+| `dnsnitch_<版本>_darwin_arm64.tar.gz` | macOS（Apple 芯片）命令行 |
+| `dnsnitch_<版本>_darwin_amd64.tar.gz` | macOS（Intel 芯片）命令行 |
+| `dnsnitch_<版本>_linux_amd64.tar.gz` | Linux x86_64 命令行 |
+| `dnsnitch_<版本>_linux_arm64.tar.gz` | Linux ARM64 命令行 |
+
+`SHA256SUMS.txt` 是所有文件的校验值。
+
+程序没有签名：Windows 第一次运行时可能弹出 SmartScreen 提示，点「更多信息」→「仍要运行」；macOS 提示「无法验证开发者」时，在终端执行 `xattr -d com.apple.quarantine ./dnsnitch` 后再运行。
+
+想试还没发布的最新改动，可以下载 [nightly 预发布](https://github.com/gxcuit/DNSnitch/releases/tag/nightly)。它由 main 分支的每次提交自动构建，没有经过发布前的测试。
+
 ## 构建
 
 需要 Go 1.27 以上。
