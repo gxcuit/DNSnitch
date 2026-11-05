@@ -1,0 +1,218 @@
+# 自动构建并发布。
+#
+# - 推送 v* 标签（例如 v1.2.0）：构建该版本，发布为正式 Release。
+#   标签里带 "-"（例如 v1.2.0-rc.1）时标记为预发布。
+# - 推送到 main（没有标签）或手动运行：构建当前提交，更新滚动预发布 "nightly"
+#   （先删掉旧的 nightly Release 和标签，再在当前提交上重新创建）。
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # 同一个 ref 只保留最新一次；nightly 被新提交取代时取消旧的运行。
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  meta:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      release_tag: ${{ steps.v.outputs.release_tag }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+      numeric: ${{ steps.v.outputs.numeric }}
+    steps:
+      - id: v
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="$GITHUB_REF_NAME"
+            release_tag="$version"
+            prerelease=false
+            [[ "$version" == *-* ]] && prerelease=true
+          else
+            version="nightly-$(date -u +%Y%m%d)-${GITHUB_SHA::7}"
+            release_tag=nightly
+            prerelease=true
+          fi
+          # Windows 文件版本号只能是数字：v1.2.3-rc.1 -> 1.2.3；nightly 保持 wails.json 原值。
+          numeric=""
+          if [[ "$version" =~ ^v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+            numeric="${BASH_REMATCH[1]}"
+          fi
+          {
+            echo "version=$version"
+            echo "release_tag=$release_tag"
+            echo "prerelease=$prerelease"
+            echo "numeric=$numeric"
+          } >> "$GITHUB_OUTPUT"
+          echo "version=$version release_tag=$release_tag prerelease=$prerelease numeric=$numeric"
+
+  test:
+    name: Test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            gui/go.sum
+      - name: Test CLI
+        shell: bash
+        run: |
+          go vet ./...
+          go test ./...
+      - name: Test GUI (Go)
+        shell: bash
+        working-directory: gui
+        run: |
+          go vet ./...
+          go test ./...
+
+  cli:
+    name: Build CLI
+    needs: [meta, test]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Cross-compile
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          targets="windows/amd64 windows/arm64 linux/amd64 linux/arm64 darwin/amd64 darwin/arm64"
+          for t in $targets; do
+            os="${t%/*}"; arch="${t#*/}"
+            name="dnsnitch_${VERSION}_${os}_${arch}"
+            ext=""; [[ "$os" == windows ]] && ext=".exe"
+            stage="build/$name"
+            mkdir -p "$stage"
+            echo "::group::$os/$arch"
+            CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" \
+              go build -trimpath -ldflags "-s -w" -o "$stage/dnsnitch$ext" ./cmd/dnsnitch
+            cp LICENSE README.md "$stage/"
+            if [[ "$os" == windows ]]; then
+              (cd build && zip -qr "../dist/$name.zip" "$name")
+            else
+              tar -C build -czf "dist/$name.tar.gz" "$name"
+            fi
+            echo "::endgroup::"
+          done
+          ls -l dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cli
+          path: dist/*
+          if-no-files-found: error
+
+  gui-windows:
+    name: Build GUI (Windows)
+    needs: [meta, test]
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+      NUMERIC: ${{ needs.meta.outputs.numeric }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: gui/go.mod
+          cache-dependency-path: |
+            go.sum
+            gui/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: gui/frontend/package-lock.json
+      - name: Install Wails CLI
+        shell: bash
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
+      - name: Set product version
+        if: env.NUMERIC != ''
+        shell: bash
+        working-directory: gui
+        run: |
+          node -e '
+            const fs = require("fs");
+            const f = "wails.json";
+            const j = JSON.parse(fs.readFileSync(f, "utf8"));
+            j.info.productVersion = process.env.NUMERIC;
+            fs.writeFileSync(f, JSON.stringify(j, null, 2) + "\n");
+          '
+          grep productVersion wails.json
+      - name: Build
+        shell: bash
+        working-directory: gui
+        run: wails build -clean -trimpath -platform windows/amd64
+      - name: Package
+        shell: pwsh
+        run: |
+          $name = "dnsnitch-gui_${env:VERSION}_windows_amd64"
+          New-Item -ItemType Directory -Force "build/$name", dist | Out-Null
+          Copy-Item gui/build/bin/dnsnitch-gui.exe, LICENSE, README.md "build/$name/"
+          Compress-Archive -Path "build/$name" -DestinationPath "dist/$name.zip"
+          Get-ChildItem dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: gui-windows
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Publish
+    needs: [meta, cli, gui-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      VERSION: ${{ needs.meta.outputs.version }}
+      TAG: ${{ needs.meta.outputs.release_tag }}
+      PRERELEASE: ${{ needs.meta.outputs.prerelease }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        working-directory: dist
+        run: |
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - name: Publish tagged release
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          flags=()
+          [[ "$PRERELEASE" == true ]] && flags+=(--prerelease)
+          gh release create "$TAG" dist/* \
+            --verify-tag \
+            --title "$TAG" \
+            --generate-notes \
+            "${flags[@]}"
+      - name: Publish nightly pre-release
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          gh release delete nightly --cleanup-tag --yes || true
+          gh release create nightly dist/* \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Nightly ($VERSION)" \
+            --notes "自动构建的预发布版本，来自 ${GITHUB_REF_NAME} 分支的提交 ${GITHUB_SHA}，未经正式发布测试。正式版本请看带 v 前缀的 Release。"
