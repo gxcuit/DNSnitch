@@ -467,7 +467,7 @@ var (
 
 // UsageText is the command-line help.
 func UsageText() string {
-	return `猫捉漏 DNSnitch —— Clash / mihomo 配置文件 DNS 泄露检测（离线，不运行 mihomo）
+	return `滴水不漏 DNSnitch —— Clash / mihomo 配置文件 DNS 泄露检测（离线，不运行 mihomo）
 
 用法：
   dnsnitch check [--format text|json] [--home 目录] <配置文件>
@@ -546,7 +546,7 @@ func resolverAnnotZh(r *model.ResolverInfo) string {
 // ---- GUI ----
 
 // GUIWindowTitle is the title of the desktop window.
-const GUIWindowTitle = "猫捉漏 DNSnitch — Clash 配置 DNS 泄露检测"
+const GUIWindowTitle = "滴水不漏 DNSnitch — Clash 配置 DNS 泄露检测"
 
 // Labels of the native open-file dialog.
 const (
