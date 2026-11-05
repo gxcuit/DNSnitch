@@ -18,3 +18,6 @@ gui/frontend/node_modules/
 gui/frontend/package.json.md5
 gui/frontend/dist/*
 !gui/frontend/dist/.gitkeep
+
+# Local copies of third-party reference articles (not redistributed; see README for links)
+/docs/*.md

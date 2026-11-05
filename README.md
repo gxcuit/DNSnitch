@@ -170,11 +170,11 @@ cd gui && wails build
 
 ## 参考
 
-判断逻辑主要来自下面几篇文章，副本放在 [docs/](docs/) 里：
+判断逻辑主要来自下面几篇文章：
 
 - [解决DNS泄露最佳实践——基于 ClashMeta](https://blog.arisa.moe/blog/2025/250814-best-practice-of-anti-dns-leak/)，Akiba Arisa
 - [Clash.Meta DNS 配置指南](https://blog.akise.app/posts/clash-dns-configure/)，Aki Akise
-- [DNS 泄漏可能比你想的范围广](docs/DNS泄漏可能比你想的范围广以及clash配置clash与tailscale%20共同使用的配置.md)
+- DNS 泄漏可能比你想的范围广，以及 clash 与 tailscale 共同使用的配置
 - [Windows 系统下 Clash 系代理软件虚拟网卡（TUN）模式的 DNS 泄露问题及解决方案](https://wildprobe.com/soft-technical/dnsleak/)，野生网管
 
 ## 许可证
