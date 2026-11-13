@@ -1,104 +1,106 @@
 # 滴水不漏 DNSnitch
 
-Clash / mihomo 配置 DNS 泄露检测。
+English | [简体中文](README.zh-CN.md)
 
-名字的来历：「滴水不漏」是这个工具想帮你做到的事，「滴」也正好念作 D，算是给 DNS 留了个位置。英文名是 DNS 和 snitch（告密者）的合写，泄露的 DNS 就是那个替你告密的家伙。程序名统一用小写的 `dnsnitch`。
+DNS leak detection for Clash / mihomo configs.
 
-开着代理看 YouTube，流量确实走了节点，但运营商照样可能知道你在访问 `www.youtube.com`。问题通常出在配置的几处写法上，它们让本该走代理的域名先在本地查了一次 DNS。下面先说泄露是怎么发生的，再说这个工具怎么用，以及它给出的风险等级怎么理解。
+About the name: 滴水不漏 (*dī shuǐ bù lòu*, "not a single drop leaks", i.e. watertight) is what this tool tries to help you achieve, and 滴 happens to be pronounced like the letter D, which leaves a spot for DNS. The English name combines DNS and snitch: a leaking DNS query is the snitch that tells on you. The program itself is always lowercase `dnsnitch`.
+
+You're watching YouTube through a proxy, and the traffic really does go through your proxy node, yet your ISP may still know you're visiting `www.youtube.com`. The cause is usually a few patterns in the config that make domains meant for the proxy get looked up in local DNS first. This page first explains how such leaks happen, then how to use the tool and how to read the risk levels it reports.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/gui-check-dark.png">
-  <img src="docs/images/gui-check.png" alt="dnsnitch 桌面窗口：左侧是检查结果，右侧是配置原文，第 16 行被高亮">
+  <img src="docs/images/gui-check.png" alt="dnsnitch desktop window: check results on the left, the config source on the right with line 16 highlighted">
 </picture>
 
-## DNS 泄露是怎么回事
+## What a DNS leak is
 
-正常情况下，mihomo 判断 `youtube.com` 要走代理后，会把域名原样交给代理节点，由节点那边去解析。本地网络上不会出现任何关于 `youtube.com` 的 DNS 查询。
+Normally, once mihomo decides `youtube.com` should go through the proxy, it hands the domain name to the proxy node as is, and the node resolves it. No DNS query for `youtube.com` ever appears on your local network.
 
-如果这个域名在本地被查了一次，哪怕最后流量还是走的代理，收到这次查询的一方也已经知道你要访问 YouTube 了。至于谁能看到，要看查询发给了谁：
+If the domain is looked up locally even once, whoever receives that query already knows you're about to visit YouTube, even if the traffic itself still goes through the proxy. Who can see it depends on where the query goes:
 
-- 发给 `8.8.8.8`、`223.5.5.5`、`114.114.114.114` 这类明文 DNS：路上的所有人都能看到，包括运营商。
-- 发给 `https://223.5.5.5/dns-query` 这类国内的加密 DNS：运营商看不到，阿里、腾讯这些 DNS 服务商能看到。
-- 发给 `https://1.1.1.1/dns-query#PROXY` 这种走代理的加密 DNS：本地网络上谁都看不到。
+- To a plaintext DNS server such as `8.8.8.8`, `223.5.5.5` or `114.114.114.114`: everyone along the path can see it, including your ISP.
+- To an encrypted DNS server in mainland China such as `https://223.5.5.5/dns-query`: your ISP can't see it, but the DNS provider (Alibaba, Tencent, …) can.
+- To encrypted DNS sent through the proxy, such as `https://1.1.1.1/dns-query#PROXY`: nobody on your local network can see it.
 
-顺便一提，很多教程说把 DNS 改成 `8.8.8.8` 就行了。但 `8.8.8.8` 默认是明文 UDP 查询，路上的人照样能看到你查了什么。
+By the way, many tutorials say switching your DNS to `8.8.8.8` is enough. But `8.8.8.8` is queried over plaintext UDP by default, so anyone along the path can still see what you looked up.
 
-## 常见的几种写法问题
+## Common config mistakes
 
-### IP 规则没加 no-resolve
+### IP rules without no-resolve
 
-这是最常见的一种。mihomo 的规则从上往下匹配，遇到 `GEOIP`、`IP-CIDR` 这类 IP 规则时，如果请求是域名，它得先把域名解析成 IP 才能判断。解析用的是 `nameserver`，而且这时候还不知道这个域名最后走直连还是走代理。
+This is the most common one. mihomo matches rules from top to bottom. When it reaches an IP rule such as `GEOIP` or `IP-CIDR` and the request is for a domain, it must first resolve the domain to an IP to evaluate the rule. That lookup uses `nameserver`, and at this point mihomo doesn't yet know whether the domain will end up going direct or through the proxy.
 
 ```yaml
 rules:
   - RULE-SET,apple_domain,Apple
-  - GEOIP,private,DIRECT          # 没有 no-resolve，走到这一行的域名都会先查 DNS
-  - GEOSITE,youtube,PROXY         # youtube.com 在上一行已经被查过了
+  - GEOIP,private,DIRECT          # no no-resolve: every domain reaching this line is looked up in DNS first
+  - GEOSITE,youtube,PROXY         # youtube.com was already looked up on the line above
   - MATCH,PROXY
 dns:
   enable: true
   nameserver:
-    - 8.8.8.8                     # 明文，youtube.com 被看到
+    - 8.8.8.8                     # plaintext: youtube.com is exposed
     - https://doh.pub/dns-query
 ```
 
-给 IP 规则加上 `no-resolve`，或者把 IP 规则都挪到域名规则后面：
+Add `no-resolve` to the IP rule, or move all IP rules below the domain rules:
 
 ```yaml
   - GEOIP,private,DIRECT,no-resolve
 ```
 
-类似的情况还有：把 IP 和域名混在一起的 classical 规则集、引用 IP 规则集时没写 `no-resolve`（比如 `RULE-SET,cn_ip,DIRECT`）、`AND` / `OR` 这类逻辑规则里夹着 IP 条件。道理都一样。
+The same applies to classical rule sets that mix IP and domain entries, to IP rule sets referenced without `no-resolve` (e.g. `RULE-SET,cn_ip,DIRECT`), and to IP conditions inside logic rules such as `AND` / `OR`.
 
-### nameserver 里混了明文 DNS
+### Plaintext DNS mixed into nameserver
 
 ```yaml
 dns:
   nameserver:
-    - 8.8.8.8                     # clash-verge 的默认 DNS 覆写里就有这一行
+    - 8.8.8.8                     # clash-verge's default DNS override adds exactly this line
     - https://doh.pub/dns-query
     - https://dns.alidns.com/dns-query
 ```
 
-mihomo 会同时向这几个服务器发查询，所以后面两个 DoH 等于白配，`8.8.8.8` 那份照样是明文出去的。规则写对的时候它暂时用不上，但只要哪天规则改错一条，就会漏。用 clash-verge 并开了 DNS 覆写的话，机场给的配置本来没问题，也会被这一行改坏。
+mihomo queries all of these servers at the same time, so the two DoH servers don't help: the query to `8.8.8.8` still goes out in plaintext. While your rules are correct it may never be used, but the moment one rule goes wrong, it leaks. If you use clash-verge with DNS override turned on, a config from your proxy provider that was fine on its own gets broken by this one line.
 
-### Windows 下开 TUN
+### TUN mode on Windows
 
-Windows 默认开着「智能多宿主名称解析」，会同时往所有网卡发 DNS 查询。开了 TUN 以后，Clash 只能拦到发往虚拟网卡的那一份，发往物理网卡的那份直接到了运营商那里。也就是说，系统默认设置下开 TUN，一定会泄露。
+Windows has "smart multi-homed name resolution" turned on by default, which sends DNS queries to all network adapters at once. With TUN turned on, Clash can only intercept the copy sent to the virtual adapter; the copy sent to the physical adapter goes straight to your ISP. In other words, turning on TUN with the default Windows settings always leaks.
 
-专业版可以在组策略里打开「计算机配置 → 管理模板 → 网络 → DNS 客户端 → 禁用智能多宿主名称解析」。家庭版没有组策略，用管理员身份执行下面这条命令，然后重启：
+On Pro editions, enable "Computer Configuration → Administrative Templates → Network → DNS Client → Turn off smart multi-homed name resolution" in Group Policy. Home editions have no Group Policy editor; run the following command as administrator, then restart:
 
 ```bat
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient" /v DisableSmartNameResolution /t REG_DWORD /d 1 /f
 ```
 
-### 其他
+### Others
 
-- 键名写错，比如 `nameserver-policy` 写成 `nameserver-police`。mihomo 不报错，直接忽略这一段，很难发现。
-- 用 `GEOIP,CN,DIRECT,no-resolve` 兜底。加了 `no-resolve` 后，这条规则对域名请求不起作用。
-- 没写 `dns.enable: true`。mihomo 默认不启用自己的 DNS，规则需要解析时直接用系统 DNS，也就是明文。
+- Misspelled keys, e.g. `nameserver-police` instead of `nameserver-policy`. mihomo doesn't complain; it silently ignores the whole section, which is hard to notice.
+- Using `GEOIP,CN,DIRECT,no-resolve` as a catch-all. With `no-resolve`, the rule never matches domain requests.
+- Missing `dns.enable: true`. mihomo's own DNS is off by default, so whenever a rule needs a lookup it uses the system DNS, which is plaintext.
 
-## dnsnitch 能做什么
+## What dnsnitch does
 
-这些问题靠翻配置不好找，几百上千行的订阅配置更是看不过来。抓包能确认有没有漏，但看不出是哪一行导致的。所以我写了 dnsnitch，读配置文件直接分析：
+These problems are hard to spot by reading the config, and subscription configs with hundreds or thousands of lines are impossible to review by eye. A packet capture can confirm whether something leaks, but not which line causes it. So I wrote dnsnitch, which analyzes the config file directly:
 
-- 不运行 mihomo，不联网。检查只读配置，不改任何文件；`fix` 只把修复结果写到一个新文件，原配置不动。
-- 判断依据对照过 mihomo v1.19.33 的源码，包括哪些规则会触发解析、查询会发给哪个 DNS。
-- 报告会指到具体行号，说明是哪条规则让哪些域名被解析、发给了哪个 DNS，以及怎么改。
-- 在 Windows 上还能只读地检查 TUN 有没有真的开着、智能多宿主名称解析有没有禁用。
+- It doesn't run mihomo and doesn't go online. Checking only reads the config and never modifies any file; `fix` only writes its result to a new file and leaves the original config untouched.
+- Its logic has been checked against the mihomo v1.19.33 source code: which rules trigger lookups, and which DNS server each query goes to.
+- Reports point to exact line numbers and explain which rule causes which domains to be looked up, which DNS server receives them, and how to fix it.
+- On Windows it can also check, read-only, whether TUN is actually on and whether smart multi-homed name resolution is turned off.
 
-有命令行和桌面窗口两个版本。
+There is a command-line version and a desktop window. Both currently print their results in Chinese.
 
-### 命令行
+### Command line
 
 ```bash
-dnsnitch check config.yaml                    # 检查配置
-dnsnitch trace config.yaml www.youtube.com    # 看这个域名会被哪个 DNS 查到
-dnsnitch fix config.yaml                      # 自动修复，结果写到 config.fixed.yaml
-dnsnitch status                               # 检查本机的 TUN 和智能多宿主名称解析
+dnsnitch check config.yaml                    # check a config
+dnsnitch trace config.yaml www.youtube.com    # see which DNS server will look up this domain
+dnsnitch fix config.yaml                      # auto-fix, writing the result to config.fixed.yaml
+dnsnitch status                               # check this machine's TUN and smart multi-homed name resolution
 ```
 
-都可以加 `--format json`。上面第一个例子补上节点和策略组后，放在 [examples/leaky-config.yaml](examples/leaky-config.yaml) 里，跑一下：
+All of them accept `--format json`. The first example above, with proxies and proxy groups added, is in [examples/leaky-config.yaml](examples/leaky-config.yaml). Running it gives:
 
 ```
 $ dnsnitch check examples/leaky-config.yaml
@@ -120,13 +122,15 @@ $ dnsnitch check examples/leaky-config.yaml
 其中 2 项可用 dnsnitch fix 自动修复。
 ```
 
-按提示给 GEOIP 加上 `no-resolve` 后再跑，高风险那条就没了，只剩下 nameserver 里的 `8.8.8.8`。这两处也可以让 dnsnitch 直接改，见下面的「自动修复」。
+In short: RULE-01 (high) says `GEOIP,private,DIRECT` has no `no-resolve`, so the domains matched by the `GEOSITE,youtube,PROXY` rule below it, and everything falling through to `MATCH,PROXY`, are first sent to the plaintext DNS server `8.8.8.8` on line 22. DNS-02 (medium) says `nameserver` contains plaintext DNS. The last line says both can be fixed automatically with `dnsnitch fix`.
 
-规则集缓存和 `GeoSite.dat` 默认在配置文件同目录下找，不在一起的话用 `--home` 指定 mihomo 的数据目录。另外要注意，各客户端实际在用的配置不一定是你订阅的那份，比如 mihomo-party 用的是 `%APPDATA%\mihomo-party\work\config.yaml`。
+Add `no-resolve` to the GEOIP rule as suggested and run it again: the high-risk finding is gone, leaving only `8.8.8.8` in `nameserver`. dnsnitch can also make both changes for you; see "Auto-fix" below.
 
-### 自动修复
+Rule-set caches and `GeoSite.dat` are looked up in the config file's directory by default; if they live elsewhere, point `--home` at mihomo's data directory. Also note that the config a client actually uses is not necessarily the one you subscribed to; mihomo-party, for example, uses `%APPDATA%\mihomo-party\work\config.yaml`.
 
-有固定改法的问题，可以让 dnsnitch 直接改。还是上面那个例子：
+### Auto-fix
+
+Problems that have a fixed solution can be fixed by dnsnitch directly. Using the same example:
 
 ```
 $ dnsnitch fix examples/leaky-config.yaml
@@ -168,103 +172,108 @@ $ dnsnitch fix examples/leaky-config.yaml
 已写入：examples/leaky-config.fixed.yaml（原配置文件未修改）
 ```
 
-修复结果写到一个新文件，默认放在原文件旁边，名字是 `<原名>.fixed.yaml`（`.yml` 文件则是 `.fixed.yml`），原配置文件不会被改动。写之前会把修复后的内容完整检查一遍，如果加载不了，或者多出了原来没有的「错误」级结果，就不写。
+It lists the two edits (line 15 gets `,no-resolve`, line 22 is deleted), shows the diff, re-checks the result (no problems left: high 1 / medium 1 before, all zero after), and reports that it wrote `examples/leaky-config.fixed.yaml` without touching the original.
 
-会自动改的：
+The result goes to a new file, by default next to the original and named `<name>.fixed.yaml` (`.fixed.yml` for `.yml` files); the original config is never modified. Before writing, dnsnitch checks the fixed content in full; if it wouldn't load, or it has an error-level finding the original didn't have, nothing is written.
 
-- 触发本地解析的 IP 规则，包括引用 IP 规则集或 classical 规则集的 `RULE-SET`，以及 `AND` / `OR` / `NOT` 里的 IP 条件：加上 `no-resolve`。等级是「提示」的不改，那种情况查询本来就走代理，算不上泄露。
-- `nameserver`、`fallback`、`proxy-server-nameserver` 里的明文 DNS：删掉。`nameserver` 或 `proxy-server-nameserver` 删空了，就换成 `https://223.5.5.5/dns-query`。
-- 拼错的键名，比如把 `nameserver-police` 改成 `nameserver-policy`。
+What gets fixed automatically:
 
-每处只改对应的那几个字符，注释、缩进、引号、空行、换行符都保持原样。下面几种情况不改，会列在「未自动修改」里并说明原因：通过 YAML 锚点、别名或 `<<` 合并引用的内容（改一处会影响多处）；写成多行的规则或列表；要改成的键名在同一段里已经有了；问题出在规则集文件里。没开 DNS、规则顺序、该用哪个代理组这类需要你自己判断的，仍然只给建议。
+- IP rules that trigger local lookups, including `RULE-SET` references to IP or classical rule sets and IP conditions inside `AND` / `OR` / `NOT`: `no-resolve` is added. Findings at the info level are left alone; in that case the query already goes through the proxy, so it isn't a leak.
+- Plaintext DNS in `nameserver`, `fallback` and `proxy-server-nameserver`: removed. If `nameserver` or `proxy-server-nameserver` would end up empty, it is replaced with `https://223.5.5.5/dns-query`.
+- Misspelled keys, e.g. `nameserver-police` becomes `nameserver-policy`.
 
-加了 `no-resolve` 的 IP 规则对域名请求就不起作用了。如果原来靠它给域名分流，比如用 `GEOIP,CN,DIRECT` 让国内网站直连，需要另外加域名规则（如 `GEOSITE,cn,DIRECT`）。
+Only the affected characters change; comments, indentation, quotes, blank lines and line endings stay as they were. The following cases are not changed; they are listed under 「未自动修改」 ("not changed automatically") with a reason: content referenced through YAML anchors, aliases or `<<` merges (changing one place would affect others); rules or lists written across several lines; a target key name that already exists in the same section; problems inside a rule-set file. Things that need your judgment, such as DNS being turned off, rule order, or which proxy group to use, still only get advice.
 
-几个参数：
+An IP rule with `no-resolve` no longer matches domain requests. If you relied on it to route domains, for example `GEOIP,CN,DIRECT` to send Chinese sites direct, add a domain rule as well (such as `GEOSITE,cn,DIRECT`).
 
-- `--dry-run`：只看改了哪些、差异是什么，不写文件。
-- `-o 路径`：写到指定的文件。
-- `--force`：输出文件已经存在时覆盖它。不加的话不会覆盖。输出路径就是原配置文件时，加了也不会写。
+Options:
 
-退出码按修复后的配置算：没有错误、高、中就是 0，还有就是 1。输出文件已存在、校验没通过或者写入失败时是 2。
+- `--dry-run`: only show what would change and the diff; write nothing.
+- `-o <path>`: write to the given file.
+- `--force`: overwrite the output file if it already exists. Without it, nothing is overwritten. If the output path is the original config, nothing is written even with `--force`.
 
-### 桌面窗口
+The exit code reflects the fixed config: 0 if there are no error, high or medium findings, otherwise 1. It is 2 if the output file already exists, verification fails or writing fails.
 
-打开 `dnsnitch-gui`，选择或者直接拖入配置文件。左边是检查结果，点结果里的行号，右边会跳到配置原文的对应位置。文章开头那张图就是检查 `examples/leaky-config.yaml` 的结果。
+### Desktop window
 
-窗口顶部一直显示本机 TUN 和智能多宿主名称解析的状态，可以随时刷新。展开「检测依据」能看到判断用的注册表值和网卡信息：
+Open `dnsnitch-gui`, then choose a config file or drag one in. Check results are on the left; click a line number in a result and the right side jumps to that place in the config source. The screenshot at the top of this page shows the result for `examples/leaky-config.yaml`.
 
-![系统状态：智能多宿主名称解析已禁用，TUN 已开启，下方列出注册表值和 wintun 网卡信息](docs/images/gui-status.png)
+When some findings can be fixed automatically, a 「自动修复（N 项）」 ("auto-fix N items") button appears. It opens a preview of the edits and the diff; saving goes through the system save dialog, writes a new file, and then checks that new file.
 
-## 风险等级
+The top of the window always shows this machine's TUN and smart multi-homed name resolution status, which you can refresh at any time. Expand 「检测依据」 ("evidence") to see the registry value and adapter information behind the verdict:
 
-等级看两点：查询会被谁看到，以及是每次都会发生还是只是可能发生。
+![System status: smart multi-homed name resolution is turned off and TUN is on, with the registry value and wintun adapter details listed below](docs/images/gui-status.png)
 
-**高**：运营商能看到你访问了哪些需要代理的网站。比如上面第一个例子，IP 规则没加 `no-resolve`，nameserver 里又有明文 DNS；或者在 `nameserver-policy` 里把 `geosite:geolocation-!cn` 交给了 `114.114.114.114`。系统状态那边，开着 TUN 又没禁用智能多宿主名称解析，也算高。
+## Risk levels
 
-**中**：运营商看不到，但国内的 DNS 服务商能看到。比如同样是 IP 规则没加 `no-resolve`，但 nameserver 用的是 `https://223.5.5.5/dns-query`。还有一类是现在没漏、但很容易漏的：nameserver 里混着 `8.8.8.8`；规则里点名的网站没问题，没覆盖到的网站靠 `MATCH,PROXY` 兜底时会以明文查一次；DNS 相关的键名写错导致设置没生效。
+The level depends on two things: who can see the query, and whether it happens every time or only might happen. The output uses the Chinese names 错误 (error), 高 (high), 中 (medium), 低 (low) and 提示 (info).
 
-**低**：只有境外的服务商能看到，或者漏出去的不是你访问的网站。比如查询发给了没加 `#PROXY` 的 `https://1.1.1.1/dns-query`；`proxy-server-nameserver` 用了明文 DNS，漏的是机场节点的域名。
+**High**: your ISP can see which proxied sites you visit. For example, the first example above: an IP rule without `no-resolve` plus plaintext DNS in `nameserver`; or `nameserver-policy` handing `geosite:geolocation-!cn` to `114.114.114.114`. On the system side, TUN turned on while smart multi-homed name resolution is not turned off is also high.
 
-**提示**：算不上泄露，但可以改。比如 DNS 查询本身走了代理，只是多查了一次（《Clash.Meta DNS 配置指南》里推荐的配置就是这样）；`GEOIP,CN,DIRECT,no-resolve` 当兜底不起作用；`MATCH,DIRECT` 的白名单写法；还在用 `fallback`。
+**Medium**: your ISP can't see it, but a DNS provider in mainland China can. For example, the same IP rule without `no-resolve`, but with `https://223.5.5.5/dns-query` as the nameserver. Another kind is "not leaking now, but easy to leak": `8.8.8.8` mixed into `nameserver`; sites named in your rules are fine, but sites not covered by any rule are looked up once in plaintext when they fall through to `MATCH,PROXY`; a misspelled DNS-related key, so the setting never takes effect.
 
-**错误**：配置写错了，mihomo 根本加载不了。比如开了 `respect-rules` 却没配 `proxy-server-nameserver`，`default-nameserver` 写成了域名，规则里引用了不存在的策略组。
+**Low**: only a provider outside mainland China can see it, or what leaks is not the site you visit. For example, queries sent to `https://1.1.1.1/dns-query` without `#PROXY`; plaintext DNS in `proxy-server-nameserver`, which leaks your proxy nodes' domain names.
 
-有错误、高、中任意一项时，命令行退出码是 1，窗口里显示「发现需要处理的问题」。只有低和提示时显示「未发现泄露风险」。
+**Info**: not a leak, but could be improved. For example, the DNS query itself goes through the proxy and is just made one extra time (the config recommended in the "Clash.Meta DNS Configuration Guide" works this way); `GEOIP,CN,DIRECT,no-resolve` as a catch-all doesn't work; whitelist-style `MATCH,DIRECT`; still using `fallback`.
 
-## 下载
+**Error**: the config is wrong and mihomo won't load it at all. For example, `respect-rules` turned on without `proxy-server-nameserver`, a domain name in `default-nameserver`, or a rule referencing a proxy group that doesn't exist.
 
-当前版本 v0.1.0，历史版本见 [Releases](https://github.com/gxcuit/DNSnitch/releases)。
+If there is any error, high or medium finding, the command-line exit code is 1 and the window shows 「发现需要处理的问题」 ("problems need attention"). With only low and info findings it shows 「未发现泄露风险」 ("no leak risk found").
 
-| 版本 | 下载 |
+## Download
+
+Current version: v0.1.0. Earlier versions are on the [Releases](https://github.com/gxcuit/DNSnitch/releases) page.
+
+| Build | Download |
 | --- | --- |
-| Windows 桌面窗口 | [dnsnitch-gui_v0.1.0_windows_amd64.zip](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch-gui_v0.1.0_windows_amd64.zip) |
-| Windows 命令行（x64） | [dnsnitch_v0.1.0_windows_amd64.zip](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_windows_amd64.zip) |
-| Windows 命令行（ARM64） | [dnsnitch_v0.1.0_windows_arm64.zip](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_windows_arm64.zip) |
-| macOS 命令行（Apple 芯片） | [dnsnitch_v0.1.0_darwin_arm64.tar.gz](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_darwin_arm64.tar.gz) |
-| macOS 命令行（Intel） | [dnsnitch_v0.1.0_darwin_amd64.tar.gz](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_darwin_amd64.tar.gz) |
-| Linux 命令行（x86_64） | [dnsnitch_v0.1.0_linux_amd64.tar.gz](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_linux_amd64.tar.gz) |
-| Linux 命令行（ARM64） | [dnsnitch_v0.1.0_linux_arm64.tar.gz](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_linux_arm64.tar.gz) |
+| Windows desktop window | [dnsnitch-gui_v0.1.0_windows_amd64.zip](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch-gui_v0.1.0_windows_amd64.zip) |
+| Windows command line (x64) | [dnsnitch_v0.1.0_windows_amd64.zip](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_windows_amd64.zip) |
+| Windows command line (ARM64) | [dnsnitch_v0.1.0_windows_arm64.zip](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_windows_arm64.zip) |
+| macOS command line (Apple silicon) | [dnsnitch_v0.1.0_darwin_arm64.tar.gz](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_darwin_arm64.tar.gz) |
+| macOS command line (Intel) | [dnsnitch_v0.1.0_darwin_amd64.tar.gz](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_darwin_amd64.tar.gz) |
+| Linux command line (x86_64) | [dnsnitch_v0.1.0_linux_amd64.tar.gz](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_linux_amd64.tar.gz) |
+| Linux command line (ARM64) | [dnsnitch_v0.1.0_linux_arm64.tar.gz](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/dnsnitch_v0.1.0_linux_arm64.tar.gz) |
 
-校验值：[SHA256SUMS.txt](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/SHA256SUMS.txt)。main 分支的最新构建：[nightly](https://github.com/gxcuit/DNSnitch/releases/tag/nightly)。
+Checksums: [SHA256SUMS.txt](https://github.com/gxcuit/DNSnitch/releases/download/v0.1.0/SHA256SUMS.txt). Latest build of the main branch: [nightly](https://github.com/gxcuit/DNSnitch/releases/tag/nightly).
 
-macOS 提示「无法验证开发者」时，执行 `xattr -d com.apple.quarantine ./dnsnitch`。
+If macOS says the developer cannot be verified, run `xattr -d com.apple.quarantine ./dnsnitch`.
 
-## 构建
+## Building
 
-需要 Go 1.27 以上。
+Requires Go 1.27 or later.
 
 ```bash
 go build -o dnsnitch ./cmd/dnsnitch
 ```
 
-命令行版是纯 Go，可以直接交叉编译到 Linux 和 macOS。桌面窗口用的是 Wails v2 和 Vue 3，还需要 Node.js 和 Wails CLI，详细步骤见 [gui/README.md](gui/README.md)：
+The command-line version is pure Go and cross-compiles directly to Linux and macOS. The desktop window uses Wails v2 and Vue 3 and additionally needs Node.js and the Wails CLI; see [gui/README.md](gui/README.md) (in Chinese) for details:
 
 ```bash
 go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
 cd gui && wails build
 ```
 
-## 还没做的
+## Not done yet
 
-- 配置检查目前按系统代理 / mixed-port 的场景分析，TUN 模式下 fake-ip、dns-hijack 这些配置项还没查，TUN 相关的只有 `status` 那一项。
-- `nameserver-policy` 和规则是按名字对应的，名字不同但内容有重叠的规则集认不出来。想确认某个具体域名，用 `trace`。
-- 系统状态检查只支持 Windows。
-- 只支持 mihomo（Clash.Meta），不支持已经停更的原版 Clash。
+- Config checks currently assume the system proxy / mixed-port setup. TUN-mode settings such as fake-ip and dns-hijack aren't checked yet; the only TUN-related check is `status`.
+- `nameserver-policy` entries are matched to rules by name, so rule sets with different names but overlapping content aren't recognized. To check a specific domain, use `trace`.
+- The system status check only supports Windows.
+- Only mihomo (Clash.Meta) is supported, not the original Clash, which is no longer maintained.
+- Output and the desktop window are in Chinese only.
 
-## 参考
+## References
 
-判断逻辑主要来自下面几篇文章：
+The detection logic is mainly based on these articles (in Chinese):
 
-- [解决DNS泄露最佳实践——基于 ClashMeta](https://blog.arisa.moe/blog/2025/250814-best-practice-of-anti-dns-leak/)，Akiba Arisa
-- [Clash.Meta DNS 配置指南](https://blog.akise.app/posts/clash-dns-configure/)，Aki Akise
-- DNS 泄漏可能比你想的范围广，以及 clash 与 tailscale 共同使用的配置
-- [Windows 系统下 Clash 系代理软件虚拟网卡（TUN）模式的 DNS 泄露问题及解决方案](https://wildprobe.com/soft-technical/dnsleak/)，野生网管
+- [解决DNS泄露最佳实践——基于 ClashMeta](https://blog.arisa.moe/blog/2025/250814-best-practice-of-anti-dns-leak/) ("Best practices for avoiding DNS leaks with ClashMeta"), Akiba Arisa
+- [Clash.Meta DNS 配置指南](https://blog.akise.app/posts/clash-dns-configure/) ("Clash.Meta DNS Configuration Guide"), Aki Akise
+- DNS 泄漏可能比你想的范围广，以及 clash 与 tailscale 共同使用的配置 ("DNS leaks may be wider than you think, plus a config for using clash together with tailscale")
+- [Windows 系统下 Clash 系代理软件虚拟网卡（TUN）模式的 DNS 泄露问题及解决方案](https://wildprobe.com/soft-technical/dnsleak/) ("DNS leaks with Clash-family proxies in TUN mode on Windows, and how to fix them"), 野生网管
 
-## 致谢
+## Acknowledgements
 
-感谢 [LINUX DO](https://linux.do) 社区。
+Thanks to the [LINUX DO](https://linux.do) community.
 
-## 许可证
+## License
 
-[GPL-3.0](LICENSE)。读取 `.mrs` 规则集的代码来自 [mihomo](https://github.com/MetaCubeX/mihomo)。
+[GPL-3.0](LICENSE). The code for reading `.mrs` rule sets comes from [mihomo](https://github.com/MetaCubeX/mihomo).
