@@ -144,6 +144,11 @@ type Rule struct {
 	Subs      []Rule // logic rule children
 	Err       string // parse error, if any
 	Loc       Location
+	// Span is set on logic sub-rules only: the byte range [start, end) of
+	// the sub-rule text between its parentheses, as an offset into the Raw
+	// of the top-level rule (also for nested sub-rules). Raw[Span[1]] is
+	// the closing parenthesis. Zero for top-level rules.
+	Span [2]int
 }
 
 // RuleProvider is a rule-providers entry.

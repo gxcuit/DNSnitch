@@ -16,6 +16,10 @@ func resolve(n *yaml.Node) *yaml.Node {
 
 type pair struct {
 	key, val *yaml.Node
+	// owner is the mapping that holds key; merged is true when the pair
+	// comes from a "<<" merge source rather than from the mapping itself.
+	owner  *yaml.Node
+	merged bool
 }
 
 func isMergeKey(k *yaml.Node) bool {
@@ -52,7 +56,7 @@ func pairsDepth(n *yaml.Node, depth int) []pair {
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		k, v := n.Content[i], n.Content[i+1]
 		if !isMergeKey(k) {
-			add(pair{k, v})
+			add(pair{key: k, val: v, owner: n})
 			continue
 		}
 		v = resolve(v)
@@ -66,6 +70,7 @@ func pairsDepth(n *yaml.Node, depth int) []pair {
 		for _, src := range sources {
 			for _, p := range pairsDepth(src, depth+1) {
 				if !explicit[p.key.Value] {
+					p.merged = true
 					add(p)
 				}
 			}

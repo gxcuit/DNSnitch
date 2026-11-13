@@ -1,3 +1,82 @@
+export namespace fix {
+	
+	export class DiffLine {
+	    op: string;
+	    text: string;
+	    no_newline?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new DiffLine(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.op = source["op"];
+	        this.text = source["text"];
+	        this.no_newline = source["no_newline"];
+	    }
+	}
+	export class Edit {
+	    id: string;
+	    line: number;
+	    path: string;
+	    before: string;
+	    after: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Edit(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.line = source["line"];
+	        this.path = source["path"];
+	        this.before = source["before"];
+	        this.after = source["after"];
+	    }
+	}
+	export class Hunk {
+	    old_start: number;
+	    old_lines: number;
+	    new_start: number;
+	    new_lines: number;
+	    lines: DiffLine[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Hunk(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.old_start = source["old_start"];
+	        this.old_lines = source["old_lines"];
+	        this.new_start = source["new_start"];
+	        this.new_lines = source["new_lines"];
+	        this.lines = this.convertValues(source["lines"], DiffLine);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace main {
 	
 	export class GUIError {
@@ -14,6 +93,38 @@ export namespace main {
 	        this.message = source["message"];
 	    }
 	}
+	export class GUIFixResult {
+	    result?: report.FixResult;
+	    error?: GUIError;
+	
+	    static createFrom(source: any = {}) {
+	        return new GUIFixResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.result = this.convertValues(source["result"], report.FixResult);
+	        this.error = this.convertValues(source["error"], GUIError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class GUIResult {
 	    result?: report.CheckResult;
 	    error?: GUIError;
@@ -25,6 +136,40 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.result = this.convertValues(source["result"], report.CheckResult);
+	        this.error = this.convertValues(source["error"], GUIError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class GUISaveResult {
+	    path?: string;
+	    cancelled?: boolean;
+	    error?: GUIError;
+	
+	    static createFrom(source: any = {}) {
+	        return new GUISaveResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.cancelled = source["cancelled"];
 	        this.error = this.convertValues(source["error"], GUIError);
 	    }
 	
@@ -153,6 +298,7 @@ export namespace report {
 	    locations: model.Location[];
 	    fix: string;
 	    notes: string[];
+	    auto_fix: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new FindingView(source);
@@ -166,6 +312,7 @@ export namespace report {
 	        this.locations = this.convertValues(source["locations"], model.Location);
 	        this.fix = source["fix"];
 	        this.notes = source["notes"];
+	        this.auto_fix = source["auto_fix"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -200,6 +347,75 @@ export namespace report {
 	        this.file = source["file"];
 	        this.findings = this.convertValues(source["findings"], FindingView);
 	        this.summary = this.convertValues(source["summary"], Summary);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class FixSkip {
+	    id: string;
+	    line: number;
+	    path: string;
+	    reason: string;
+	    reason_text: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FixSkip(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.line = source["line"];
+	        this.path = source["path"];
+	        this.reason = source["reason"];
+	        this.reason_text = source["reason_text"];
+	    }
+	}
+	export class FixResult {
+	    file: string;
+	    output: string;
+	    written: boolean;
+	    not_written_reason: string;
+	    edits: fix.Edit[];
+	    skipped: FixSkip[];
+	    diff: fix.Hunk[];
+	    before: Summary;
+	    after: Summary;
+	    remaining: FindingView[];
+	
+	    static createFrom(source: any = {}) {
+	        return new FixResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.file = source["file"];
+	        this.output = source["output"];
+	        this.written = source["written"];
+	        this.not_written_reason = source["not_written_reason"];
+	        this.edits = this.convertValues(source["edits"], fix.Edit);
+	        this.skipped = this.convertValues(source["skipped"], FixSkip);
+	        this.diff = this.convertValues(source["diff"], fix.Hunk);
+	        this.before = this.convertValues(source["before"], Summary);
+	        this.after = this.convertValues(source["after"], Summary);
+	        this.remaining = this.convertValues(source["remaining"], FindingView);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

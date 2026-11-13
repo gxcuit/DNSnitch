@@ -1,13 +1,20 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	goruntime "runtime"
 	"strings"
 	"testing"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
 	"dnsnitch/internal/app"
+	"dnsnitch/internal/report"
 )
 
 const ruleSetConfig = `proxies:
@@ -243,5 +250,330 @@ func TestReadLimited(t *testing.T) {
 	}
 	if b, err := readLimited(strings.NewReader("1234"), 4); err != nil || string(b) != "1234" {
 		t.Errorf("readLimited = %q, %v", b, err)
+	}
+}
+
+// leakyConfig copies examples/leaky-config.yaml (RULE-01 + DNS-02, both
+// fixable) into an empty temp dir and returns its path.
+func leakyConfig(t *testing.T) string {
+	t.Helper()
+	cfg := filepath.Join(t.TempDir(), "config.yaml")
+	write(t, cfg, readFile(t, filepath.Join("..", "examples", "leaky-config.yaml")))
+	return cfg
+}
+
+func readFile(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+// fakeDialog records the calls of the injected saveDialog.
+type fakeDialog struct {
+	calls int
+	opts  runtime.SaveDialogOptions
+}
+
+// useDialog makes saveDialog return (path, err) for the rest of the test.
+func useDialog(t *testing.T, path string, err error) *fakeDialog {
+	t.Helper()
+	d := &fakeDialog{}
+	old := saveDialog
+	saveDialog = func(_ context.Context, o runtime.SaveDialogOptions) (string, error) {
+		d.calls++
+		d.opts = o
+		return path, err
+	}
+	t.Cleanup(func() { saveDialog = old })
+	return d
+}
+
+// planned runs Check and PlanFix on cfg and fails unless both succeed.
+func planned(t *testing.T, a *App, cfg string) *report.FixResult {
+	t.Helper()
+	if r := a.Check(cfg); r.Result == nil {
+		t.Fatalf("check failed: %+v", r.Error)
+	}
+	r := a.PlanFix()
+	if r.Error != nil || r.Result == nil {
+		t.Fatalf("PlanFix = %+v", r)
+	}
+	return r.Result
+}
+
+func TestPlanFixBeforeCheck(t *testing.T) {
+	a := NewApp()
+	r := a.PlanFix()
+	if r.Result != nil || r.Error == nil || r.Error.Kind != report.ErrKindNoConfig || r.Error.Message == "" {
+		t.Fatalf("PlanFix = %+v", r)
+	}
+	d := useDialog(t, filepath.Join(t.TempDir(), "out.yaml"), nil)
+	s := a.SaveFix()
+	if s.Error == nil || s.Error.Kind != report.ErrKindNoFix || s.Path != "" || s.Cancelled || d.calls != 0 {
+		t.Fatalf("SaveFix = %+v (dialog calls %d)", s, d.calls)
+	}
+	args := report.ErrorText(report.ErrKindArgs, "")
+	if r.Error.Message == args || s.Error.Message == args || r.Error.Message == s.Error.Message {
+		t.Errorf("no-config / no-fix need their own texts: %q %q", r.Error.Message, s.Error.Message)
+	}
+}
+
+func TestPlanFixLeakyExample(t *testing.T) {
+	cfg, err := filepath.Abs(filepath.Join("..", "examples", "leaky-config.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	orig := readFile(t, cfg)
+	a := NewApp()
+	got := planned(t, a, cfg)
+	if got.File != cfg || got.Output != app.DefaultFixOutput(cfg) || got.Written || got.NotWrittenReason != report.NotWrittenDryRun {
+		t.Errorf("result header = %+v", got)
+	}
+	if len(got.Edits) != 2 || got.Edits[0].ID != "RULE-01" || got.Edits[1].ID != "DNS-02" || got.Edits[1].After != "" {
+		t.Errorf("edits = %+v", got.Edits)
+	}
+	if len(got.Diff) == 0 || len(got.Skipped) != 0 {
+		t.Errorf("diff = %+v, skipped = %+v", got.Diff, got.Skipped)
+	}
+	if got.Before.High != 1 || got.Before.Medium != 1 || got.After.High+got.After.Medium+got.After.Error != 0 {
+		t.Errorf("before = %+v, after = %+v", got.Before, got.After)
+	}
+	if _, err := os.Stat(got.Output); err == nil {
+		t.Errorf("PlanFix must not write %s", got.Output)
+	}
+	if readFile(t, cfg) != orig {
+		t.Errorf("PlanFix modified the config")
+	}
+
+	// Same rendering as `dnsnitch fix --dry-run --format json`.
+	out, kind, err := app.PlanFix(cfg, "")
+	if kind != app.ErrNone {
+		t.Fatal(err)
+	}
+	want := report.BuildFixResult(out.File, out.Output, out.Plan, out.Before, out.After, false)
+	ga, _ := json.Marshal(got)
+	wa, _ := json.Marshal(want)
+	if !bytes.Equal(ga, wa) {
+		t.Errorf("binding:\n%s\ncli:\n%s", ga, wa)
+	}
+}
+
+func TestPlanFixErrors(t *testing.T) {
+	dir := t.TempDir()
+	bad := filepath.Join(dir, "bad.yaml")
+	write(t, bad, "a: [1, 2\n")
+	for _, c := range []struct{ path, kind string }{
+		{filepath.Join(dir, "missing.yaml"), report.ErrKindRead},
+		{bad, report.ErrKindParse},
+		{filepath.Join("..", "testdata", "ac12-encrypted.yaml"), report.ErrKindEncrypted},
+	} {
+		a := NewApp()
+		a.Check(c.path)
+		r := a.PlanFix()
+		if r.Result != nil || r.Error == nil || r.Error.Kind != c.kind || r.Error.Message == "" {
+			t.Errorf("%s: %+v", c.path, r)
+		}
+		d := useDialog(t, filepath.Join(dir, "out.yaml"), nil)
+		if s := a.SaveFix(); s.Error == nil || s.Error.Kind != report.ErrKindNoFix || d.calls != 0 {
+			t.Errorf("%s: SaveFix = %+v", c.path, s)
+		}
+	}
+}
+
+func TestPlanFixNothingToFix(t *testing.T) {
+	a := NewApp()
+	got := planned(t, a, filepath.Join("..", "testdata", "ac3-recommended.yaml"))
+	if len(got.Edits) != 0 || len(got.Diff) != 0 || got.NotWrittenReason != report.NotWrittenNothing {
+		t.Errorf("result = %+v", got)
+	}
+	d := useDialog(t, filepath.Join(t.TempDir(), "out.yaml"), nil)
+	if s := a.SaveFix(); s.Error == nil || s.Error.Kind != report.ErrKindNoFix || d.calls != 0 {
+		t.Errorf("SaveFix without edits = %+v (dialog calls %d)", s, d.calls)
+	}
+}
+
+func TestSaveFix(t *testing.T) {
+	cfg := leakyConfig(t)
+	orig := readFile(t, cfg)
+	a := NewApp()
+	planned(t, a, cfg)
+
+	dest := filepath.Join(filepath.Dir(cfg), "out.yaml")
+	d := useDialog(t, dest, nil)
+	s := a.SaveFix()
+	if s.Error != nil || s.Cancelled || s.Path != dest {
+		t.Fatalf("SaveFix = %+v", s)
+	}
+	o := d.opts
+	if d.calls != 1 || o.DefaultDirectory != filepath.Dir(cfg) || o.DefaultFilename != "config.fixed.yaml" ||
+		o.Title == "" || len(o.Filters) == 0 {
+		t.Errorf("dialog options = %+v", o)
+	}
+	if readFile(t, cfg) != orig {
+		t.Errorf("the config was modified")
+	}
+	fixed := readFile(t, dest)
+	if !strings.Contains(fixed, "GEOIP,private,DIRECT,no-resolve") || strings.Contains(fixed, "8.8.8.8") {
+		t.Errorf("written content:\n%s", fixed)
+	}
+
+	// The frontend then checks the saved file: the result and the
+	// ReadSource whitelist follow it, and the old plan is gone.
+	r := a.Check(s.Path)
+	if r.Result == nil || r.Result.Summary.High+r.Result.Summary.Medium+r.Result.Summary.Error != 0 {
+		t.Fatalf("check of the saved file = %+v", r)
+	}
+	if _, err := a.ReadSource(s.Path); err != nil {
+		t.Errorf("saved file must be viewable: %v", err)
+	}
+	if _, err := a.ReadSource(cfg); err == nil {
+		t.Errorf("the previous config must leave the whitelist")
+	}
+	if s := a.SaveFix(); s.Error == nil || s.Error.Kind != report.ErrKindNoFix {
+		t.Errorf("SaveFix after a new Check = %+v", s)
+	}
+}
+
+func TestSaveFixOverwritesConfirmedFile(t *testing.T) {
+	cfg := leakyConfig(t)
+	a := NewApp()
+	planned(t, a, cfg)
+	dest := filepath.Join(filepath.Dir(cfg), "existing.yaml")
+	write(t, dest, "old: content\n")
+	useDialog(t, dest, nil) // the native dialog asked before returning an existing file
+	if s := a.SaveFix(); s.Error != nil || s.Path != dest {
+		t.Fatalf("SaveFix = %+v", s)
+	}
+	if strings.Contains(readFile(t, dest), "old: content") {
+		t.Errorf("existing file not replaced")
+	}
+}
+
+func TestSaveFixCancelled(t *testing.T) {
+	cfg := leakyConfig(t)
+	a := NewApp()
+	planned(t, a, cfg)
+	d := useDialog(t, "", nil)
+	if s := a.SaveFix(); !s.Cancelled || s.Error != nil || s.Path != "" || d.calls != 1 {
+		t.Fatalf("SaveFix = %+v", s)
+	}
+	entries, err := os.ReadDir(filepath.Dir(cfg))
+	if err != nil || len(entries) != 1 {
+		t.Errorf("nothing may be written: %v %v", entries, err)
+	}
+	// The plan is kept: the user may open the dialog again.
+	dest := filepath.Join(filepath.Dir(cfg), "out.yaml")
+	useDialog(t, dest, nil)
+	if s := a.SaveFix(); s.Error != nil || s.Path != dest {
+		t.Errorf("second SaveFix = %+v", s)
+	}
+}
+
+func TestSaveFixDialogError(t *testing.T) {
+	cfg := leakyConfig(t)
+	a := NewApp()
+	planned(t, a, cfg)
+	useDialog(t, "", errors.New("dialog failed"))
+	if s := a.SaveFix(); s.Error == nil || s.Error.Kind != report.ErrKindWrite || !strings.Contains(s.Error.Message, "dialog failed") {
+		t.Fatalf("SaveFix = %+v", s)
+	}
+}
+
+func TestSaveFixConfigChanged(t *testing.T) {
+	cfg := leakyConfig(t)
+	a := NewApp()
+	planned(t, a, cfg)
+	changed := readFile(t, cfg) + "# edited after the preview\n"
+	write(t, cfg, changed)
+
+	dest := filepath.Join(filepath.Dir(cfg), "out.yaml")
+	d := useDialog(t, dest, nil)
+	s := a.SaveFix()
+	if s.Error == nil || s.Error.Kind != report.ErrKindChanged || !strings.Contains(s.Error.Message, cfg) {
+		t.Fatalf("SaveFix = %+v", s)
+	}
+	if d.calls != 0 {
+		t.Errorf("a changed config must be refused before the dialog opens")
+	}
+	if _, err := os.Stat(dest); err == nil {
+		t.Errorf("nothing may be written after the config changed")
+	}
+	if readFile(t, cfg) != changed {
+		t.Errorf("the config was modified")
+	}
+
+	// Edited while the save dialog is open: app.SaveFix refuses it.
+	a2 := NewApp()
+	planned(t, a2, cfg)
+	saveDialog = func(context.Context, runtime.SaveDialogOptions) (string, error) {
+		write(t, cfg, changed+"# edited again\n")
+		return dest, nil
+	}
+	if s := a2.SaveFix(); s.Error == nil || s.Error.Kind != report.ErrKindChanged {
+		t.Fatalf("SaveFix with an edit during the dialog = %+v", s)
+	}
+	if _, err := os.Stat(dest); err == nil {
+		t.Errorf("nothing may be written after the config changed")
+	}
+}
+
+func TestSaveFixSameFile(t *testing.T) {
+	cfg := leakyConfig(t)
+	orig := readFile(t, cfg)
+	aliases := []string{cfg, filepath.Join(filepath.Dir(cfg), ".", "config.yaml")}
+	if goruntime.GOOS == "windows" {
+		aliases = append(aliases, strings.ToUpper(cfg), strings.ReplaceAll(cfg, `\`, "/"))
+	}
+	a := NewApp()
+	planned(t, a, cfg)
+	for _, p := range aliases {
+		useDialog(t, p, nil)
+		s := a.SaveFix()
+		if s.Error == nil || s.Error.Kind != report.ErrKindSameFile || s.Path != "" {
+			t.Errorf("%s: SaveFix = %+v", p, s)
+		}
+		if readFile(t, cfg) != orig {
+			t.Fatalf("%s: the config was overwritten", p)
+		}
+	}
+	if entries, err := os.ReadDir(filepath.Dir(cfg)); err != nil || len(entries) != 1 {
+		t.Errorf("no temp file may be left: %v %v", entries, err)
+	}
+}
+
+func TestCheckInvalidatesPlan(t *testing.T) {
+	cfg := leakyConfig(t)
+	dest := filepath.Join(filepath.Dir(cfg), "out.yaml")
+
+	// A later Check of another file.
+	a := NewApp()
+	planned(t, a, cfg)
+	a.Check(filepath.Join("..", "testdata", "ac1-geoip-without-no-resolve.yaml"))
+	d := useDialog(t, dest, nil)
+	if s := a.SaveFix(); s.Error == nil || s.Error.Kind != report.ErrKindNoFix || d.calls != 0 {
+		t.Errorf("SaveFix after another Check = %+v", s)
+	}
+
+	// A re-check of the same file also needs a new preview.
+	planned(t, a, cfg)
+	a.Check(cfg)
+	if s := a.SaveFix(); s.Error == nil || s.Error.Kind != report.ErrKindNoFix {
+		t.Errorf("SaveFix after a re-check = %+v", s)
+	}
+
+	// A Check started while the save dialog is open.
+	planned(t, a, cfg)
+	saveDialog = func(context.Context, runtime.SaveDialogOptions) (string, error) {
+		a.Check(cfg)
+		return dest, nil
+	}
+	if s := a.SaveFix(); s.Error == nil || s.Error.Kind != report.ErrKindNoFix {
+		t.Errorf("SaveFix with a Check during the dialog = %+v", s)
+	}
+	if _, err := os.Stat(dest); err == nil {
+		t.Errorf("stale plans must not be written")
 	}
 }

@@ -21,6 +21,15 @@
   --sev-medium: #bc4c00;
   --sev-low: #0969da;
   --sev-info: #6e7781;
+
+  /* Fix preview: modal backdrop and diff lines (+ / - / @@ header). */
+  --backdrop: rgba(31, 35, 40, 0.45);
+  --diff-add-bg: #dafbe1;
+  --diff-add-fg: #116329;
+  --diff-del-bg: #ffebe9;
+  --diff-del-fg: #82071e;
+  --diff-hunk-bg: #ddf4ff;
+  --diff-hunk-fg: #0550ae;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -43,6 +52,14 @@
     --sev-medium: #db6d28;
     --sev-low: #4493f8;
     --sev-info: #8d96a0;
+
+    --backdrop: rgba(1, 4, 9, 0.7);
+    --diff-add-bg: #12301d;
+    --diff-add-fg: #aff5b4;
+    --diff-del-bg: #3d1519;
+    --diff-del-fg: #ffdcd7;
+    --diff-hunk-bg: #121d2f;
+    --diff-hunk-fg: #a5d6ff;
   }
 }
 

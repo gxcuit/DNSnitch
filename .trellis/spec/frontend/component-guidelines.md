@@ -33,7 +33,11 @@
 
 ## Display-only commands
 
-`SystemStatusBar` shows fix commands (e.g. the `reg add …` line) as selectable `<code>` text under "仅供参考，本工具不会执行". Never add a button that runs, or copies-and-runs, a command: the tool is strictly read-only (backend `quality-guidelines.md`, `internal/platform` read-only tests).
+`SystemStatusBar` shows fix commands (e.g. the `reg add …` line) as selectable `<code>` text under "仅供参考，本工具不会执行". Never add a button that runs, or copies-and-runs, a command: the system inspection is strictly read-only (backend `quality-guidelines.md`, `internal/platform` read-only tests).
+
+## Fix preview (the only write)
+
+The only thing the GUI ever writes is the fixed config, as a **new file**: `SummaryBar` shows 「自动修复（N 项）」 (N = findings with `auto_fix`), `FixPreview` (modal, `role="dialog"`, Esc / 关闭 / backdrop click close it) renders the backend `report.FixResult` as-is — edits, skipped items with `reason_text`, the diff (`@@` header, `+` / `-` / context rows with old / new line numbers, `\` no-newline row, horizontally scrollable), before / after severity chips — and emits `save` / `close`. Diff colors use only `--diff-add-*`, `--diff-del-*`, `--diff-hunk-*` and `--backdrop` from `style.css`; `+` / `-` markers stay so color is never the only signal. The component never passes content or a path anywhere: saving is `useFix().save()` → `SaveFix()` (backend `gui-bindings.md`).
 
 ## Common Mistakes
 

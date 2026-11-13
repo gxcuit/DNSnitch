@@ -1,0 +1,9 @@
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "新包 internal/fix 的位置与依赖方向（app → fix → config/ruleparse/model）"}
+{"file": ".trellis/spec/backend/mihomo-semantics.md", "reason": "no-resolve 在 IP 规则、RULE-SET、逻辑子规则中的语义，决定修改落点"}
+{"file": ".trellis/spec/backend/cli-contract.md", "reason": "新增 fix 子命令、FixResult JSON、auto_fix 字段与退出码，保持 check/trace/status 不变"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "ErrorKind 分类与退出码 2 的约定，新增 verify/same-file/exists/write/changed"}
+{"file": ".trellis/spec/backend/gui-bindings.md", "reason": "新增 PlanFix/SaveFix 绑定；写入内容与路径不得来自前端"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "必跑命令、提示文字只在 messages_zh.go"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "FixPreview.vue 与 SummaryBar 按钮的组件约定"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "useFix.ts 与现有 useCheck 的状态衔接"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "使用 wailsjs 生成的 FixResult 类型"}

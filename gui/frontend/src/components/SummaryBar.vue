@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import {computed} from 'vue'
 import type {report} from '../../wailsjs/go/models'
 import {zh} from '../i18n/zh'
 import {SEVERITIES, label} from '../labels'
 
-defineProps<{
+const props = defineProps<{
   currentFile: string
   result: report.CheckResult | null
   loading: boolean
@@ -15,7 +16,11 @@ defineProps<{
 const emit = defineEmits<{
   choose: []
   recheck: []
+  autofix: []
 }>()
+
+/** Findings the backend marked as automatically fixable (auto_fix). */
+const autoFixCount = computed(() => props.result?.findings.filter((f) => f.auto_fix).length ?? 0)
 </script>
 
 <template>
@@ -34,6 +39,13 @@ const emit = defineEmits<{
       >{{ label(labels, 'severity', s) }} {{ result.summary[s] }}</span>
       <span v-if="isClean" class="status ok">✓ {{ zh.statusOk }}<small>{{ zh.statusOkDetail }}</small></span>
       <span v-else class="status bad">{{ zh.statusBad }}</span>
+      <button
+        v-if="autoFixCount > 0"
+        type="button"
+        class="autofix"
+        :disabled="loading"
+        @click="emit('autofix')"
+      >{{ zh.autoFix(autoFixCount) }}</button>
     </div>
     <div v-if="notice" class="notice">{{ notice }}</div>
   </header>
@@ -93,6 +105,12 @@ const emit = defineEmits<{
 }
 .status.bad {
   color: var(--sev-high);
+}
+.autofix {
+  margin-left: auto;
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
 }
 .notice {
   font-size: 12px;

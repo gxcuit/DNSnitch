@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "必跑命令与禁止模式"}
+{"file": ".trellis/spec/backend/cli-contract.md", "reason": "核对 fix 签名、JSON 字段、错误矩阵与文档一致"}
+{"file": ".trellis/spec/backend/gui-bindings.md", "reason": "核对新绑定不接受前端传入的写入内容 / 路径"}
+{"file": ".trellis/spec/backend/mihomo-semantics.md", "reason": "核对 no-resolve 修改位置符合 mihomo 语义"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "前端检查清单（类型检查、深浅主题）"}
