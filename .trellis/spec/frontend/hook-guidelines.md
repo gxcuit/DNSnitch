@@ -8,6 +8,7 @@
 
 - `useCheck()` (`src/composables/useCheck.ts`) owns the config-check state and the bindings `Check`, `ChooseFile`, `ReadSource`, `Labels`.
 - `useSystemStatus()` (`src/composables/useSystemStatus.ts`) owns the read-only system status and the `SystemStatus` binding; it loads on mount and on 刷新. It is the model for adding an independent concern.
+- `useFix(check, checking)` (`src/composables/useFix.ts`) owns the auto-fix preview (`open`, `loading`, `result`, `error`, `saving`, `saveError`) and the `PlanFix` / `SaveFix` bindings (`openPreview`, `save`, `close`). It gets `check` and `loading` from `useCheck()` in `App.vue` instead of sharing state: after a successful save it calls `check(savedPath)`, and it closes itself whenever a Check starts (the backend drops the stored plan at that moment). A cancelled dialog keeps the preview open; save errors stay inside the preview.
 - Add a new composable only for an independent concern; don't split one concern's state across composables that need to stay in sync.
 
 ## Data Fetching (calling Go bindings)

@@ -14,8 +14,16 @@ export function Labels() {
   return window['go']['main']['App']['Labels']();
 }
 
+export function PlanFix() {
+  return window['go']['main']['App']['PlanFix']();
+}
+
 export function ReadSource(arg1) {
   return window['go']['main']['App']['ReadSource'](arg1);
+}
+
+export function SaveFix() {
+  return window['go']['main']['App']['SaveFix']();
 }
 
 export function SystemStatus() {

@@ -1,0 +1,27 @@
+# AC15：自动修复会跳过的写法（锚点 / 别名 / << 合并、多行文本、跨行的 [ ] 列表），其它修改照常。
+proxies:
+  - {name: hk, type: ss, server: hk.example.com, port: 8388, cipher: aes-128-gcm, password: example}
+
+proxy-groups:
+  - {name: PROXY, type: select, proxies: [hk]}
+
+base-dns: &base-dns
+  enable: true
+  nameserver:
+    - 8.8.8.8
+    - https://doh.pub/dns-query
+
+dns:
+  <<: *base-dns
+  fallback:
+    - 9.9.9.9
+    - tls://1.1.1.1#PROXY
+  proxy-server-nameserver: [223.5.5.5,
+    https://doh.pub/dns-query]
+
+rules:
+  - GEOIP,private,DIRECT
+  - >-
+    GEOIP,CN,DIRECT
+  - GEOSITE,youtube,PROXY
+  - MATCH,PROXY

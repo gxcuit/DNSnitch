@@ -9,6 +9,10 @@ export function ChooseFile():Promise<string>;
 
 export function Labels():Promise<report.Labels>;
 
+export function PlanFix():Promise<main.GUIFixResult>;
+
 export function ReadSource(arg1:string):Promise<main.SourceFile>;
+
+export function SaveFix():Promise<main.GUISaveResult>;
 
 export function SystemStatus():Promise<report.StatusView>;

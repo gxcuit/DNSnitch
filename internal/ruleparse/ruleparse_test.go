@@ -3,6 +3,8 @@ package ruleparse
 import (
 	"reflect"
 	"testing"
+
+	"dnsnitch/internal/model"
 )
 
 func TestParse(t *testing.T) {
@@ -114,4 +116,110 @@ func TestTypeSets(t *testing.T) {
 			t.Errorf("%s should be a domain type", tp)
 		}
 	}
+}
+
+// spanSub returns the sub-rule reached by the index path.
+func spanSub(t *testing.T, r model.Rule, path ...int) model.Rule {
+	t.Helper()
+	for _, i := range path {
+		if i >= len(r.Subs) {
+			t.Fatalf("%q: no sub-rule at %v", r.Raw, path)
+		}
+		r = r.Subs[i]
+	}
+	return r
+}
+
+func TestSubRuleSpans(t *testing.T) {
+	tests := []struct {
+		name   string
+		raw    string
+		target bool
+		path   []int
+		want   string // raw[Span[0]:Span[1]]
+		sub    string // the sub-rule's own Raw
+	}{
+		{"and first", "AND,((DOMAIN-SUFFIX,a.com),(IP-CIDR,1.0.0.0/8)),DIRECT", true, []int{0}, "DOMAIN-SUFFIX,a.com", "DOMAIN-SUFFIX,a.com"},
+		{"and second", "AND,((DOMAIN-SUFFIX,a.com),(IP-CIDR,1.0.0.0/8)),DIRECT", true, []int{1}, "IP-CIDR,1.0.0.0/8", "IP-CIDR,1.0.0.0/8"},
+		{"or", "OR,((IP-CIDR,1.0.0.0/8),(IP-CIDR,2.0.0.0/8),(DOMAIN,b.com)),DIRECT", true, []int{1}, "IP-CIDR,2.0.0.0/8", "IP-CIDR,2.0.0.0/8"},
+		{"not", "NOT,((GEOIP,CN)),PROXY", true, []int{0}, "GEOIP,CN", "GEOIP,CN"},
+		{"sub-rule condition", "SUB-RULE,(IP-CIDR,1.0.0.0/8),sub1", true, []int{0}, "IP-CIDR,1.0.0.0/8", "IP-CIDR,1.0.0.0/8"},
+		{"sub-rule logic condition", "SUB-RULE,(AND,((NETWORK,tcp),(GEOIP,US))),sub1", true, []int{0}, "AND,((NETWORK,tcp),(GEOIP,US))", "AND,((NETWORK,tcp),(GEOIP,US))"},
+		{"sub-rule nested", "SUB-RULE,(AND,((NETWORK,tcp),(GEOIP,US))),sub1", true, []int{0, 1}, "GEOIP,US", "GEOIP,US"},
+		{"nested and in or", "OR,((AND,((DOMAIN,a),(IP-CIDR,1.0.0.0/8))),(NETWORK,udp)),PROXY", true, []int{0, 1}, "IP-CIDR,1.0.0.0/8", "IP-CIDR,1.0.0.0/8"},
+		{"nested second group", "OR,((NETWORK,udp),(AND,((DOMAIN,a),(NOT,((IP-CIDR,1.0.0.0/8)))))),PROXY", true, []int{1, 1, 0}, "IP-CIDR,1.0.0.0/8", "IP-CIDR,1.0.0.0/8"},
+		{"spaces", "AND, ((DOMAIN-SUFFIX, a.com), (IP-CIDR, 1.0.0.0/8)) , DIRECT", true, []int{1}, "IP-CIDR, 1.0.0.0/8", "IP-CIDR,1.0.0.0/8"},
+		{"spaces nested", "OR , ( (AND, ((DOMAIN,a) , (IP-CIDR , 1.0.0.0/8 ))), (NETWORK,udp)),PROXY", true, []int{0, 1}, "IP-CIDR , 1.0.0.0/8 ", "IP-CIDR,1.0.0.0/8 "},
+		{"multibyte before", "AND,((DOMAIN,例子.com),(GEOIP,CN)),🎯 全球直连", true, []int{1}, "GEOIP,CN", "GEOIP,CN"},
+		{"classical entry", "AND,((DOMAIN,a),(IP-CIDR,1.0.0.0/8))", false, []int{1}, "IP-CIDR,1.0.0.0/8", "IP-CIDR,1.0.0.0/8"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := Parse(tt.raw, tt.target)
+			if r.Err != "" {
+				t.Fatalf("parse error %q", r.Err)
+			}
+			if r.Span != [2]int{} {
+				t.Errorf("top-level span = %v, want zero", r.Span)
+			}
+			sub := spanSub(t, r, tt.path...)
+			if got := tt.raw[sub.Span[0]:sub.Span[1]]; got != tt.want {
+				t.Errorf("raw[span] = %q, want %q", got, tt.want)
+			}
+			if sub.Raw != tt.sub {
+				t.Errorf("sub.Raw = %q, want %q", sub.Raw, tt.sub)
+			}
+			if tt.raw[sub.Span[0]-1] != '(' || tt.raw[sub.Span[1]] != ')' {
+				t.Errorf("span %v is not delimited by parentheses in %q", sub.Span, tt.raw)
+			}
+		})
+	}
+}
+
+// Inserting ",no-resolve" at a sub-rule's Span end turns exactly that
+// sub-rule into a non-resolving one.
+func TestSubRuleSpanInsert(t *testing.T) {
+	raw := "OR,((IP-CIDR,1.0.0.0/8),(AND,((DOMAIN,a),(IP-CIDR, 2.0.0.0/8 ))),(DOMAIN,b.com)),DIRECT"
+	r := Parse(raw, true)
+	end := r.Subs[1].Subs[1].Span[1]
+	fixed := raw[:end] + ",no-resolve" + raw[end:]
+	f := Parse(fixed, true)
+	if f.Err != "" {
+		t.Fatalf("parse %q: %s", fixed, f.Err)
+	}
+	if f.Subs[0].NoResolve || !f.Subs[1].Subs[1].NoResolve || f.Subs[1].Subs[1].Payload != "2.0.0.0/8" {
+		t.Errorf("after insert: %+v", f.Subs)
+	}
+}
+
+// FuzzParseSpans: Parse never panics and every sub-rule span lies inside
+// the raw text, delimited by parentheses.
+func FuzzParseSpans(f *testing.F) {
+	for _, s := range []string{
+		"AND,((DOMAIN-SUFFIX,a.com),(IP-CIDR,1.0.0.0/8)),DIRECT",
+		"OR , ( (AND, ((DOMAIN,a) , (IP-CIDR , 1.0.0.0/8 ))), (NETWORK,udp)),PROXY",
+		"SUB-RULE,(AND,((NETWORK,tcp),(GEOIP,US))),sub1",
+		"NOT,((GEOIP,CN)),PROXY",
+		"SUB-RULE,x)(y,z",
+	} {
+		f.Add(s, true)
+		f.Add(s, false)
+	}
+	f.Fuzz(func(t *testing.T, raw string, needTarget bool) {
+		r := Parse(raw, needTarget)
+		if r.Err != "" {
+			return
+		}
+		var walk func(subs []model.Rule)
+		walk = func(subs []model.Rule) {
+			for _, s := range subs {
+				a, b := s.Span[0], s.Span[1]
+				if a < 1 || a > b || b >= len(raw) || raw[a-1] != '(' || raw[b] != ')' {
+					t.Fatalf("%q: bad span %v for %q", raw, s.Span, s.Raw)
+				}
+				walk(s.Subs)
+			}
+		}
+		walk(r.Subs)
+	})
 }

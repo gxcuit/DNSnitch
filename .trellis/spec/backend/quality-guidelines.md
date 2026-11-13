@@ -70,6 +70,11 @@ Every behavior the checker relies on must be listed in `mihomo-semantics.md` wit
 
 GeoSite `Regex` entries must keep their case (`\D` ≠ `\d`); only non-regex values are lower-cased.
 
+### Don't: re-serialize the user's YAML when editing it
+
+**Problem**: `yaml.Marshal` of the parsed `yaml.Node` tree changes indentation, quoting, line folding and blank lines; on a subscription config that is hundreds of unrelated diff lines.
+**Instead**: `internal/fix` edits the original bytes at node positions, verifies that the located text decodes back to `Node.Value`, and skips (with a reason code) anything it cannot edit exactly. Gotcha: yaml.v3 `Node.Column` is 1-based and counts **runes**, not bytes, and `config.Parse` strips a UTF-8 BOM before unmarshalling — convert with the line's runes and add `Doc.BOM` back (`internal/fix/text.go`).
+
 ---
 
 ## Common Mistakes

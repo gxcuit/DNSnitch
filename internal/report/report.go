@@ -11,6 +11,7 @@ import (
 
 	"dnsnitch/internal/analyze"
 	"dnsnitch/internal/dnsserver"
+	"dnsnitch/internal/fix"
 	"dnsnitch/internal/model"
 	"dnsnitch/internal/trace"
 )
@@ -64,18 +65,31 @@ func locString(l model.Location) string {
 }
 
 func writeCheckText(w io.Writer, file string, fs []model.Finding) error {
+	r := BuildCheckResult(file, fs)
 	var b strings.Builder
 	b.WriteString(labelCheckHeader + file + "\n\n")
+	writeFindingsText(&b, r.Findings)
+	b.WriteString(summaryLine(labelSummary, r.Summary) + "\n")
+	if n := autoFixCount(r.Findings); n > 0 {
+		b.WriteString(fmt.Sprintf(labelAutoFixHint, n) + "\n")
+	}
+	_, err := io.WriteString(w, b.String())
+	return err
+}
+
+// writeFindingsText renders findings the way `check` does: one block per
+// finding, each followed by an empty line.
+func writeFindingsText(b *strings.Builder, fs []FindingView) {
 	if len(fs) == 0 {
 		b.WriteString(labelNoFindings + "\n\n")
 	}
 	for _, f := range fs {
-		head := "[" + severityZh[f.Severity] + "] " + f.ID
+		head := "[" + severityLabel(f.Severity) + "] " + f.ID
 		if len(f.Locations) > 0 {
 			head += "  " + locString(f.Locations[0])
 		}
 		b.WriteString(head + "\n")
-		b.WriteString("  " + findingMessage(f) + "\n")
+		b.WriteString("  " + f.Message + "\n")
 		if len(f.Locations) > 0 {
 			b.WriteString("  " + labelLocations + "\n")
 			perRole := map[string]int{}
@@ -100,20 +114,37 @@ func writeCheckText(w io.Writer, file string, fs []model.Finding) error {
 				}
 			}
 		}
-		if fix := findingFix(f); fix != "" {
-			b.WriteString("  " + labelFix + fix + "\n")
+		if f.Fix != "" {
+			b.WriteString("  " + labelFix + f.Fix + "\n")
 		}
 		if len(f.Notes) > 0 {
 			b.WriteString("  " + labelNotes + "\n")
 			for _, n := range f.Notes {
-				b.WriteString("    - " + noteText(n) + "\n")
+				b.WriteString("    - " + n + "\n")
 			}
 		}
 		b.WriteString("\n")
 	}
-	b.WriteString(summaryText(Counts(fs)) + "\n")
-	_, err := io.WriteString(w, b.String())
-	return err
+}
+
+// severityLabel names a severity given by its JSON code.
+func severityLabel(code string) string {
+	for _, s := range model.Severities {
+		if s.String() == code {
+			return severityZh[s]
+		}
+	}
+	return code
+}
+
+func autoFixCount(fs []FindingView) int {
+	n := 0
+	for _, f := range fs {
+		if f.AutoFix {
+			n++
+		}
+	}
+	return n
 }
 
 // FindingView is one finding as rendered for JSON output and the GUI.
@@ -124,6 +155,7 @@ type FindingView struct {
 	Locations []model.Location `json:"locations"`
 	Fix       string           `json:"fix"`
 	Notes     []string         `json:"notes"`
+	AutoFix   bool             `json:"auto_fix"` // fix.Eligible: `dnsnitch fix` can repair it
 }
 
 // Summary counts findings per severity.
@@ -151,6 +183,7 @@ func toFindingView(f model.Finding) FindingView {
 		Locations: f.Locations,
 		Fix:       findingFix(f),
 		Notes:     []string{},
+		AutoFix:   fix.Eligible(f),
 	}
 	if jf.Locations == nil {
 		jf.Locations = []model.Location{}
@@ -168,9 +201,13 @@ func BuildCheckResult(file string, fs []model.Finding) CheckResult {
 	for _, f := range fs {
 		out.Findings = append(out.Findings, toFindingView(f))
 	}
-	c := Counts(fs)
-	out.Summary = Summary{Error: c[model.Error], High: c[model.High], Medium: c[model.Medium], Low: c[model.Low], Info: c[model.Info]}
+	out.Summary = summarize(fs)
 	return out
+}
+
+func summarize(fs []model.Finding) Summary {
+	c := Counts(fs)
+	return Summary{Error: c[model.Error], High: c[model.High], Medium: c[model.Medium], Low: c[model.Low], Info: c[model.Info]}
 }
 
 func writeCheckJSON(w io.Writer, file string, fs []model.Finding) error {

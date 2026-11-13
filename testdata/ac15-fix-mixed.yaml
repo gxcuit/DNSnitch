@@ -1,0 +1,39 @@
+# AC15：dnsnitch fix 的综合夹具。规则、逻辑规则、classical 规则集、DNS 列表、键名拼错各一处，
+# 注释、单 / 双引号、空行都要原样保留，只改需要改的字符。
+mixed-port: 7890
+
+proxies:
+  - {name: hk, type: ss, server: hk.example.com, port: 8388, cipher: aes-128-gcm, password: example}
+
+proxy-groups:
+  - {name: PROXY, type: select, proxies: [hk]}
+
+rule-providers:
+  telegram:
+    type: inline
+    behavior: classical
+    payload:
+      - 'IP-CIDR,91.108.4.0/22'
+      - 'DOMAIN-SUFFIX,telegram.org'
+
+rules:
+  - 'GEOIP,private,DIRECT'   # 单引号，行尾注释
+  - "AND,((DOMAIN-SUFFIX,a.com),(IP-CIDR,1.0.0.0/8)),DIRECT"
+  - OR,((IP-CIDR,2.0.0.0/8),(DOMAIN,b.com),(IP-CIDR,3.0.0.0/8)),DIRECT
+  - RULE-SET,telegram,PROXY
+
+  - GEOSITE,youtube,PROXY
+  - MATCH,PROXY
+
+dns:
+  enable: true
+  enhanced-mode: fake-ip
+  enhanced-mod: redir-host   # 目标键已存在，不改
+  nameserver:
+    - 8.8.8.8                # 明文
+    - https://doh.pub/dns-query
+  fallback: [tls://1.1.1.1#PROXY, 114.114.114.114]
+  proxy-server-nameserver:
+    - 223.5.5.5
+  nameserver-police:
+    "+.lan": https://doh.pub/dns-query

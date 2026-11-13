@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"dnsnitch/internal/fix"
 	"dnsnitch/internal/model"
 	"dnsnitch/internal/platform"
 )
@@ -406,12 +407,60 @@ var (
 	labelUnknownLine = "行号未知"
 )
 
-func summaryText(counts map[model.Severity]int) string {
+// labelAutoFixHint follows the check summary when some findings have an
+// automatic fix.
+const labelAutoFixHint = "其中 %d 项可用 dnsnitch fix 自动修复。"
+
+// summaryLine renders per-severity counts after label, e.g.
+// "汇总：错误 0，高 1，中 1，低 0，提示 0".
+func summaryLine(label string, s Summary) string {
+	counts := map[model.Severity]int{model.Error: s.Error, model.High: s.High, model.Medium: s.Medium, model.Low: s.Low, model.Info: s.Info}
 	var parts []string
-	for _, s := range model.Severities {
-		parts = append(parts, fmt.Sprintf("%s %d", severityZh[s], counts[s]))
+	for _, sev := range model.Severities {
+		parts = append(parts, fmt.Sprintf("%s %d", severityZh[sev], counts[sev]))
 	}
-	return labelSummary + strings.Join(parts, "，")
+	return label + strings.Join(parts, "，")
+}
+
+// ---- fix ----
+
+// Labels of the `fix` text output.
+const (
+	labelFixHeader      = "自动修复：%s"
+	labelFixEdits       = "已修改（%d 处）："
+	labelFixNoEdits     = "没有可以自动修改的项。"
+	labelFixBefore      = "修改前："
+	labelFixAfter       = "修改后："
+	labelFixDeleted     = "（删除这一行）"
+	labelFixSkipped     = "未自动修改（%d 处），需要手动处理："
+	labelFixReason      = "原因："
+	labelFixDiff        = "差异："
+	labelFixRemaining   = "修复后仍存在的检查结果："
+	labelFixUnchanged   = "检查结果（配置未修改）："
+	labelFixSummaryPre  = "修复前："
+	labelFixSummaryPost = "修复后："
+	labelFixWritten     = "已写入：%s（原配置文件未修改）"
+)
+
+// ArgFixOnly is the detail of the argument error for fix-only flags given
+// to another subcommand.
+const ArgFixOnly = "-o / --output、--force、--dry-run 只能用于 fix。"
+
+// fixSkipZh explains fix.Skip reason codes.
+var fixSkipZh = map[string]string{
+	fix.ReasonSharedNode:       "这一项通过 YAML 锚点、别名或 << 合并引用，改一处会影响多处。",
+	fix.ReasonMultiline:        "这一项是多行文本或跨行的 [ ] 列表，无法只改这一处。",
+	fix.ReasonLayout:           "这一项的写法与预期不同（例如含转义字符、已带 no-resolve），没有把握只改对应的字符。",
+	fix.ReasonKeyExists:        "建议的键名在同一段里已经存在，需要手动合并两处设置。",
+	fix.ReasonOtherFile:        "位置不在这个配置文件里（例如在规则集文件中），fix 只改配置文件。",
+	fix.ReasonRenameBreaksLoad: "改正键名后这项设置会生效，但会让 mihomo 无法加载配置，所以保留原样。",
+	fix.ReasonPassLimit:        fmt.Sprintf("已经修了 %d 轮，仍有新的触发点，剩下的请手动处理。", fix.MaxPasses),
+}
+
+// fixNotWrittenZh explains FixResult.NotWrittenReason codes.
+var fixNotWrittenZh = map[string]string{
+	NotWrittenDryRun:  "未写入：--dry-run 只显示修复结果，不写文件（不加 --dry-run 时写入 %s）。",
+	NotWrittenNothing: "未写入：没有需要修改的内容。",
 }
 
 // ---- trace ----
@@ -472,19 +521,25 @@ func UsageText() string {
 用法：
   dnsnitch check [--format text|json] [--home 目录] <配置文件>
   dnsnitch trace [--format text|json] [--home 目录] <配置文件> <域名>
+  dnsnitch fix [-o 输出文件] [--force] [--dry-run] [--format text|json] [--home 目录] <配置文件>
   dnsnitch status [--format text|json]
 
+  fix 自动修复能直接改的检查结果：给触发解析的 IP 规则加 no-resolve，删除明文 DNS，
+  改正拼错的键名。结果写到新文件，原配置文件不会被修改。
   status 只读检测本机状态：TUN 模式是否开启、Windows 智能多宿主名称解析是否已禁用。
   不需要配置文件，不修改任何系统设置。
 
 参数：
-  --format   输出格式，text（默认）或 json
-  --home     mihomo 主目录，用于查找规则集缓存（rules/）与 GeoSite.dat；默认为配置文件所在目录
+  --format       输出格式，text（默认）或 json
+  --home         mihomo 主目录，用于查找规则集缓存（rules/）与 GeoSite.dat；默认为配置文件所在目录
+  -o, --output   fix 的输出文件；默认与配置文件同目录，名为 <名>.fixed<扩展名>
+  --force        fix：输出文件已存在时覆盖
+  --dry-run      fix：只显示修改内容和差异，不写文件
 
 退出码：
-  0  没有「错误 / 高 / 中」结果（status：没有发现必然泄露的组合）
-  1  有「错误 / 高 / 中」结果（trace：泄露等级为中及以上；status：TUN 已开启且未禁用智能多宿主名称解析）
-  2  配置无法读取、无法解析或已加密；参数错误
+  0  没有「错误 / 高 / 中」结果（fix：修复后的配置没有；status：没有发现必然泄露的组合）
+  1  有「错误 / 高 / 中」结果（fix：修复后仍有；trace：泄露等级为中及以上；status：TUN 已开启且未禁用智能多宿主名称解析）
+  2  配置无法读取、无法解析或已加密；参数错误；fix 的输出文件已存在（未加 --force）、就是原配置文件、修复结果校验失败或无法写入
 `
 }
 
@@ -500,6 +555,17 @@ const (
 	ErrKindSource       = "source"
 	ErrKindSourceRead   = "source-read"
 	ErrKindSourceBinary = "source-binary"
+	// fix: the detail is the error for verify / write, the output path for
+	// same-file / exists and the config path for changed.
+	ErrKindVerify   = "verify"
+	ErrKindSameFile = "same-file"
+	ErrKindExists   = "exists"
+	ErrKindWrite    = "write"
+	ErrKindChanged  = "changed"
+	// GUI fix preview: PlanFix before any Check; SaveFix without a saveable
+	// plan (no preview, no edits, or a later Check made it stale).
+	ErrKindNoConfig = "no-config"
+	ErrKindNoFix    = "no-fix"
 )
 
 // ErrorText renders a command-line / GUI error.
@@ -520,6 +586,20 @@ func ErrorText(kind, detail string) string {
 		return "无法读取该文件：" + detail
 	case ErrKindSourceBinary:
 		return "该文件是二进制格式（如 .mrs 规则集、GeoSite.dat），无法显示原文。" + detail
+	case ErrKindVerify:
+		return "错误：修复后的配置没有通过校验（无法加载，或出现了原来没有的「错误」级结果），没有写入任何文件：" + detail
+	case ErrKindSameFile:
+		return fmt.Sprintf("错误：输出文件 %s 就是原配置文件。修复结果只写到新文件，不改原配置，请换一个输出路径。", detail)
+	case ErrKindExists:
+		return fmt.Sprintf("错误：输出文件 %s 已存在，没有覆盖。确认要覆盖请加 --force，或用 -o 指定其他路径。", detail)
+	case ErrKindWrite:
+		return "错误：无法写入修复后的配置：" + detail
+	case ErrKindChanged:
+		return fmt.Sprintf("错误：配置文件 %s 在生成修复预览之后被修改过，没有保存。请重新检查后再修复。", detail)
+	case ErrKindNoConfig:
+		return "错误：还没有检查配置文件，请先选择或拖入一个配置文件。" + detail
+	case ErrKindNoFix:
+		return "错误：没有可保存的修复结果（还没有生成修复预览、预览中没有修改，或之后重新检查过配置文件），没有写入任何文件。请重新打开「自动修复」。" + detail
 	}
 	return "错误：参数不正确。" + detail + "\n\n" + UsageText()
 }
@@ -554,6 +634,10 @@ const (
 	GUIFilterConfig = "mihomo 配置（*.yaml, *.yml）"
 	GUIFilterAll    = "所有文件（*.*）"
 )
+
+// GUISaveDialogTitle is the title of the native save dialog of the fix
+// preview.
+const GUISaveDialogTitle = "保存修复后的配置（原配置文件不会被修改）"
 
 // GUILabels returns the display names of the codes that appear in a
 // CheckResult, so the GUI does not repeat backend prose.

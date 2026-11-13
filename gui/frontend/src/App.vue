@@ -2,18 +2,28 @@
 import {onBeforeUnmount, onMounted, ref} from 'vue'
 import {OnFileDrop, OnFileDropOff} from '../wailsjs/runtime/runtime'
 import FindingList from './components/FindingList.vue'
+import FixPreview from './components/FixPreview.vue'
 import SourceView from './components/SourceView.vue'
 import SummaryBar from './components/SummaryBar.vue'
 import SystemStatusBar from './components/SystemStatusBar.vue'
 import {useCheck} from './composables/useCheck'
+import {useFix} from './composables/useFix'
 import {useSystemStatus} from './composables/useSystemStatus'
 import {zh} from './i18n/zh'
 
 const {
   currentFile, result, error, loading, notice, labels, isClean,
   selected, sourcePath, source, sourceError, sourceLoading, highlightLine, reveal, version,
-  loadLabels, choose, recheck, onDropped, selectLocation,
+  loadLabels, check, choose, recheck, onDropped, selectLocation,
 } = useCheck()
+
+// Auto-fix preview; a successful save checks the saved file, and any new
+// Check closes the preview.
+const {
+  open: fixOpen, loading: fixLoading, result: fixResult, error: fixError,
+  saving: fixSaving, saveError: fixSaveError,
+  openPreview, save: saveFix, close: closeFix,
+} = useFix(check, loading)
 
 const {status, statusError, statusLoading, refreshStatus} = useSystemStatus()
 
@@ -66,6 +76,7 @@ onBeforeUnmount(() => {
       :notice="notice"
       @choose="choose"
       @recheck="recheck"
+      @autofix="openPreview"
     />
     <SystemStatusBar
       :status="status"
@@ -115,6 +126,18 @@ onBeforeUnmount(() => {
         <span>{{ zh.checking }}</span>
       </div>
     </main>
+
+    <FixPreview
+      v-if="fixOpen"
+      :result="fixResult"
+      :error="fixError"
+      :loading="fixLoading"
+      :saving="fixSaving"
+      :save-error="fixSaveError"
+      :labels="labels"
+      @save="saveFix"
+      @close="closeFix"
+    />
 
     <div v-if="dragDepth > 0" class="drop-overlay">{{ zh.dropHint }}</div>
   </div>
@@ -200,6 +223,7 @@ onBeforeUnmount(() => {
 .drop-overlay {
   position: fixed;
   inset: 8px;
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: center;

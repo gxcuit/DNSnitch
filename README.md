@@ -82,7 +82,7 @@ reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient" /v DisableSmartN
 
 这些问题靠翻配置不好找，几百上千行的订阅配置更是看不过来。抓包能确认有没有漏，但看不出是哪一行导致的。所以我写了 dnsnitch，读配置文件直接分析：
 
-- 不运行 mihomo，不联网，不改任何文件。
+- 不运行 mihomo，不联网。检查只读配置，不改任何文件；`fix` 只把修复结果写到一个新文件，原配置不动。
 - 判断依据对照过 mihomo v1.19.33 的源码，包括哪些规则会触发解析、查询会发给哪个 DNS。
 - 报告会指到具体行号，说明是哪条规则让哪些域名被解析、发给了哪个 DNS，以及怎么改。
 - 在 Windows 上还能只读地检查 TUN 有没有真的开着、智能多宿主名称解析有没有禁用。
@@ -94,6 +94,7 @@ reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient" /v DisableSmartN
 ```bash
 dnsnitch check config.yaml                    # 检查配置
 dnsnitch trace config.yaml www.youtube.com    # 看这个域名会被哪个 DNS 查到
+dnsnitch fix config.yaml                      # 自动修复，结果写到 config.fixed.yaml
 dnsnitch status                               # 检查本机的 TUN 和智能多宿主名称解析
 ```
 
@@ -116,11 +117,76 @@ $ dnsnitch check examples/leaky-config.yaml
   修复：删除这些明文服务器；需要国内直连解析时改用加密地址（如 https://223.5.5.5/dns-query）。
 
 汇总：错误 0，高 1，中 1，低 0，提示 0
+其中 2 项可用 dnsnitch fix 自动修复。
 ```
 
-按提示给 GEOIP 加上 `no-resolve` 后再跑，高风险那条就没了，只剩下 nameserver 里的 `8.8.8.8`。
+按提示给 GEOIP 加上 `no-resolve` 后再跑，高风险那条就没了，只剩下 nameserver 里的 `8.8.8.8`。这两处也可以让 dnsnitch 直接改，见下面的「自动修复」。
 
 规则集缓存和 `GeoSite.dat` 默认在配置文件同目录下找，不在一起的话用 `--home` 指定 mihomo 的数据目录。另外要注意，各客户端实际在用的配置不一定是你订阅的那份，比如 mihomo-party 用的是 `%APPDATA%\mihomo-party\work\config.yaml`。
+
+### 自动修复
+
+有固定改法的问题，可以让 dnsnitch 直接改。还是上面那个例子：
+
+```
+$ dnsnitch fix examples/leaky-config.yaml
+自动修复：examples/leaky-config.yaml
+
+已修改（2 处）：
+  RULE-01  examples/leaky-config.yaml:15
+    修改前：- GEOIP,private,DIRECT
+    修改后：- GEOIP,private,DIRECT,no-resolve
+  DNS-02  examples/leaky-config.yaml:22
+    修改前：- 8.8.8.8
+    修改后：（删除这一行）
+
+差异：
+--- examples/leaky-config.yaml
++++ examples/leaky-config.fixed.yaml
+@@ -12,12 +12,11 @@
+ 
+ rules:
+   - RULE-SET,apple_domain,Apple
+-  - GEOIP,private,DIRECT
++  - GEOIP,private,DIRECT,no-resolve
+   - GEOSITE,youtube,PROXY
+   - MATCH,PROXY
+ 
+ dns:
+   enable: true
+   nameserver:
+-    - 8.8.8.8
+     - https://doh.pub/dns-query
+
+修复后仍存在的检查结果：
+
+未发现问题。
+
+修复前：错误 0，高 1，中 1，低 0，提示 0
+修复后：错误 0，高 0，中 0，低 0，提示 0
+
+已写入：examples/leaky-config.fixed.yaml（原配置文件未修改）
+```
+
+修复结果写到一个新文件，默认放在原文件旁边，名字是 `<原名>.fixed.yaml`（`.yml` 文件则是 `.fixed.yml`），原配置文件不会被改动。写之前会把修复后的内容完整检查一遍，如果加载不了，或者多出了原来没有的「错误」级结果，就不写。
+
+会自动改的：
+
+- 触发本地解析的 IP 规则，包括引用 IP 规则集或 classical 规则集的 `RULE-SET`，以及 `AND` / `OR` / `NOT` 里的 IP 条件：加上 `no-resolve`。等级是「提示」的不改，那种情况查询本来就走代理，算不上泄露。
+- `nameserver`、`fallback`、`proxy-server-nameserver` 里的明文 DNS：删掉。`nameserver` 或 `proxy-server-nameserver` 删空了，就换成 `https://223.5.5.5/dns-query`。
+- 拼错的键名，比如把 `nameserver-police` 改成 `nameserver-policy`。
+
+每处只改对应的那几个字符，注释、缩进、引号、空行、换行符都保持原样。下面几种情况不改，会列在「未自动修改」里并说明原因：通过 YAML 锚点、别名或 `<<` 合并引用的内容（改一处会影响多处）；写成多行的规则或列表；要改成的键名在同一段里已经有了；问题出在规则集文件里。没开 DNS、规则顺序、该用哪个代理组这类需要你自己判断的，仍然只给建议。
+
+加了 `no-resolve` 的 IP 规则对域名请求就不起作用了。如果原来靠它给域名分流，比如用 `GEOIP,CN,DIRECT` 让国内网站直连，需要另外加域名规则（如 `GEOSITE,cn,DIRECT`）。
+
+几个参数：
+
+- `--dry-run`：只看改了哪些、差异是什么，不写文件。
+- `-o 路径`：写到指定的文件。
+- `--force`：输出文件已经存在时覆盖它。不加的话不会覆盖。输出路径就是原配置文件时，加了也不会写。
+
+退出码按修复后的配置算：没有错误、高、中就是 0，还有就是 1。输出文件已存在、校验没通过或者写入失败时是 2。
 
 ### 桌面窗口
 

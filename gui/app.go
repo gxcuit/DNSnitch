@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"io"
 	"os"
@@ -24,16 +25,37 @@ const maxSourceSize = 32 << 20
 // inspectSystem reads the system status for SystemStatus; tests replace it.
 var inspectSystem = platform.Inspect
 
+// saveDialog opens the native save dialog for SaveFix; tests replace it so
+// that no window is needed. It returns "" when cancelled.
+var saveDialog = runtime.SaveFileDialog
+
 // GUIResult is the value returned by Check: either Result or Error is set.
 type GUIResult struct {
 	Result *report.CheckResult `json:"result,omitempty"`
 	Error  *GUIError           `json:"error,omitempty"`
 }
 
-// GUIError describes why a config could not be analyzed.
+// GUIError describes why a config could not be analyzed, fixed or saved.
 type GUIError struct {
-	Kind    string `json:"kind"`    // read / parse / encrypted
+	// Kind is an app.ErrorKind (read / parse / encrypted / verify /
+	// same-file / exists / write / changed) or no-config / no-fix.
+	Kind    string `json:"kind"`
 	Message string `json:"message"` // display text from report.ErrorText
+}
+
+// GUIFixResult is the value returned by PlanFix: either Result (the fix
+// preview, same struct as `dnsnitch fix --format json`) or Error is set.
+type GUIFixResult struct {
+	Result *report.FixResult `json:"result,omitempty"`
+	Error  *GUIError         `json:"error,omitempty"`
+}
+
+// GUISaveResult is the value returned by SaveFix: exactly one of Path (the
+// written file), Cancelled (the save dialog was cancelled) or Error is set.
+type GUISaveResult struct {
+	Path      string    `json:"path,omitempty"`
+	Cancelled bool      `json:"cancelled,omitempty"`
+	Error     *GUIError `json:"error,omitempty"`
 }
 
 // SourceFile is the content of a file shown in the source view. Lines have
@@ -45,14 +67,20 @@ type SourceFile struct {
 
 // App holds the methods bound to the frontend. Bound methods run
 // concurrently: ctx is written once in startup (before the frontend can call
-// anything); seq and allowed are guarded by mu, and allowed is replaced as a
-// whole, never mutated, so a snapshot can be used without the lock.
+// anything); the other fields are guarded by mu, and allowed is replaced as
+// a whole, never mutated, so a snapshot can be used without the lock.
 type App struct {
 	ctx context.Context
 
 	mu      sync.Mutex
 	seq     uint64   // number of Check calls started
 	allowed []string // cleaned absolute files of the latest started Check
+	config  string   // absolute config path of the latest started Check
+	fixSeq  uint64   // number of PlanFix calls started
+	// planned is the outcome of the latest PlanFix. Check and PlanFix clear
+	// it when they start, and a PlanFix overtaken by either does not store
+	// its outcome, so a stored plan always belongs to the latest Check.
+	planned *app.FixOutcome
 }
 
 // NewApp creates the bound App.
@@ -92,29 +120,136 @@ func (a *App) Check(path string) GUIResult {
 	a.mu.Lock()
 	a.seq++
 	seq := a.seq
+	a.config = path
+	a.planned = nil // a fix preview belongs to the Check it was made for
 	a.mu.Unlock()
 
 	out := app.RunCheck(path, "")
 	a.setAllowed(seq, out)
 
 	if out.ErrKind != app.ErrNone {
-		return GUIResult{Error: guiError(out)}
+		return GUIResult{Error: guiError(out.ErrKind, out.Err, path, "")}
 	}
 	r := report.BuildCheckResult(path, out.Findings)
 	return GUIResult{Result: &r}
 }
 
-func guiError(out app.CheckOutcome) *GUIError {
-	e := &GUIError{Kind: string(out.ErrKind)}
-	switch out.ErrKind {
+// guiError renders an app.ErrorKind of RunCheck, PlanFix or SaveFix; file
+// is the config and dest the chosen output path (SaveFix).
+func guiError(kind app.ErrorKind, err error, file, dest string) *GUIError {
+	detail := ""
+	if err != nil {
+		detail = err.Error()
+	}
+	e := &GUIError{Kind: string(kind)}
+	switch kind {
 	case app.ErrEncrypted:
 		e.Message = report.ErrorText(report.ErrKindEncrypted, "")
 	case app.ErrParse:
-		e.Message = report.ErrorText(report.ErrKindParse, out.Err.Error())
+		e.Message = report.ErrorText(report.ErrKindParse, detail)
+	case app.ErrVerify:
+		e.Message = report.ErrorText(report.ErrKindVerify, detail)
+	case app.ErrSameFile:
+		e.Message = report.ErrorText(report.ErrKindSameFile, dest)
+	case app.ErrExists:
+		e.Message = report.ErrorText(report.ErrKindExists, dest)
+	case app.ErrWrite:
+		e.Message = report.ErrorText(report.ErrKindWrite, detail)
+	case app.ErrChanged:
+		e.Message = report.ErrorText(report.ErrKindChanged, file)
 	default:
-		e.Message = report.ErrorText(report.ErrKindRead, out.Err.Error())
+		e.Message = report.ErrorText(report.ErrKindRead, detail)
 	}
 	return e
+}
+
+// textError is a GUIError of a kind that has no underlying error.
+func textError(kind string) *GUIError {
+	return &GUIError{Kind: kind, Message: report.ErrorText(kind, "")}
+}
+
+// PlanFix computes the automatic fixes of the config of the latest Check
+// (app.PlanFix, same home as Check) without writing anything, and keeps the
+// outcome for SaveFix. It takes no parameters: the frontend cannot choose
+// the file, and the content to save is computed here.
+func (a *App) PlanFix() GUIFixResult {
+	a.mu.Lock()
+	seq, file := a.seq, a.config
+	a.fixSeq++
+	fixSeq := a.fixSeq
+	a.planned = nil
+	a.mu.Unlock()
+	if file == "" {
+		return GUIFixResult{Error: textError(report.ErrKindNoConfig)}
+	}
+
+	out, kind, err := app.PlanFix(file, "")
+	if kind != app.ErrNone {
+		return GUIFixResult{Error: guiError(kind, err, file, "")}
+	}
+	a.mu.Lock()
+	if seq == a.seq && fixSeq == a.fixSeq {
+		a.planned = &out
+	}
+	a.mu.Unlock()
+	r := report.BuildFixResult(out.File, out.Output, out.Plan, out.Before, out.After, false)
+	return GUIFixResult{Result: &r}
+}
+
+// current returns the stored PlanFix outcome (nil when there is none).
+func (a *App) current() *app.FixOutcome {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.planned
+}
+
+// SaveFix writes the fixed text of the latest PlanFix to a file chosen in
+// the native save dialog (the only source of the path), defaulting to
+// app.DefaultFixOutput next to the config. The dialog has already confirmed
+// overwriting, so app.SaveFix runs with force; it still refuses the config
+// itself (any alias) and a config changed since PlanFix (kind "changed").
+func (a *App) SaveFix() GUISaveResult {
+	p := a.current()
+	if p == nil || p.Plan == nil || len(p.Plan.Edits) == 0 {
+		return GUISaveResult{Error: textError(report.ErrKindNoFix)}
+	}
+	file := p.File
+	// Refuse a config edited since the preview before asking for a path;
+	// app.SaveFix checks again right before writing.
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return GUISaveResult{Error: guiError(app.ErrRead, err, file, "")}
+	}
+	if sha256.Sum256(data) != p.SourceHash {
+		return GUISaveResult{Error: guiError(app.ErrChanged, nil, file, "")}
+	}
+	dest, err := saveDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultDirectory: filepath.Dir(file),
+		DefaultFilename:  filepath.Base(app.DefaultFixOutput(file)),
+		Title:            report.GUISaveDialogTitle,
+		Filters: []runtime.FileFilter{
+			{DisplayName: report.GUIFilterConfig, Pattern: "*.yaml;*.yml"},
+			{DisplayName: report.GUIFilterAll, Pattern: "*.*"},
+		},
+		CanCreateDirectories: true,
+	})
+	if err != nil {
+		return GUISaveResult{Error: guiError(app.ErrWrite, err, file, "")}
+	}
+	if dest == "" {
+		return GUISaveResult{Cancelled: true}
+	}
+	// A Check or another PlanFix may have started while the dialog was open.
+	if a.current() != p {
+		return GUISaveResult{Error: textError(report.ErrKindNoFix)}
+	}
+	if abs, err := filepath.Abs(dest); err == nil {
+		dest = abs
+	}
+	if kind, err := app.SaveFix(*p, dest, true); kind != app.ErrNone {
+		return GUISaveResult{Error: guiError(kind, err, file, dest)}
+	}
+	return GUISaveResult{Path: dest}
 }
 
 // setAllowed records the files of a Check: the config itself and every file

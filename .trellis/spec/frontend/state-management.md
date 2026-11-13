@@ -1,6 +1,6 @@
 # State Management
 
-> No Pinia, no router. Config-check state lives in `useCheck()`; system status (TUN / smart name resolution) lives in `useSystemStatus()`. The two never share state.
+> No Pinia, no router. Config-check state lives in `useCheck()`; system status (TUN / smart name resolution) lives in `useSystemStatus()`; the auto-fix preview lives in `useFix()`. They never share state: `useFix` only receives `useCheck`'s `check` function and `loading` ref (see `hook-guidelines.md`).
 
 ---
 

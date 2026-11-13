@@ -59,6 +59,9 @@ func Parse(raw string, needTarget bool) model.Rule {
 	for i := range items {
 		items[i] = strings.Trim(items[i], " ")
 	}
+	// payloadMap maps byte offsets of the payload of a logic rule (items
+	// 1..n joined by ",") back to offsets in raw.
+	var payloadMap []int
 	r.Type = strings.ToUpper(items[0])
 	if len(items) > 1 {
 		switch r.Type {
@@ -71,6 +74,19 @@ func Parse(raw string, needTarget bool) model.Rule {
 				items = items[:l-1]
 			}
 			r.Payload = strings.Join(items[1:], ",")
+			if !IsLogicType(r.Type) {
+				break
+			}
+			starts, offs := itemOffsets(raw)
+			payloadMap = make([]int, 0, len(r.Payload))
+			for i := 1; i < len(items); i++ {
+				if i > 1 {
+					payloadMap = append(payloadMap, starts[i]-1) // the "," before items[i]
+				}
+				for j := range len(items[i]) {
+					payloadMap = append(payloadMap, offs[i]+j)
+				}
+			}
 		default:
 			r.Payload = items[1]
 			if len(items) > 2 {
@@ -107,12 +123,15 @@ func Parse(raw string, needTarget bool) model.Rule {
 	var err error
 	switch r.Type {
 	case "AND", "OR", "NOT":
-		r.Subs, err = parseLogicPayload(r.Payload)
+		r.Subs, err = parseLogicPayload(r.Payload, payloadMap)
 		if err == nil && r.Type == "NOT" && len(r.Subs) != 1 {
 			err = errors.New("not rule must contain one rule")
 		}
 	case "SUB-RULE":
-		r.Subs, err = parseLogicPayload("(" + r.Payload + ")")
+		// The added parentheses do not exist in raw; they only delimit the
+		// outer group, which never becomes a sub-rule.
+		wrapped := append(append([]int{-1}, payloadMap...), -1)
+		r.Subs, err = parseLogicPayload("("+r.Payload+")", wrapped)
 		if err == nil && len(r.Subs) != 1 {
 			err = errors.New("sub-rule must contain one rule")
 		}
@@ -121,6 +140,18 @@ func Parse(raw string, needTarget bool) model.Rule {
 		r.Err = err.Error()
 	}
 	return r
+}
+
+// itemOffsets returns, for each ","-separated item of raw, its offset in
+// raw (starts) and the offset of its text with leading spaces trimmed (offs).
+func itemOffsets(raw string) (starts, offs []int) {
+	pos := 0
+	for _, it := range strings.Split(raw, ",") {
+		starts = append(starts, pos)
+		offs = append(offs, pos+len(it)-len(strings.TrimLeft(it, " ")))
+		pos += len(it) + 1
+	}
+	return starts, offs
 }
 
 func contains(list []string, s string) bool {
@@ -135,8 +166,10 @@ func contains(list []string, s string) bool {
 type span struct{ start, end int }
 
 // parseLogicPayload mirrors logic.parsePayload: the payload must be
-// "(...)", top-level parenthesised groups become sub-rules.
-func parseLogicPayload(payload string) ([]model.Rule, error) {
+// "(...)", top-level parenthesised groups become sub-rules. pmap maps each
+// payload byte offset to the offset in the raw text of the rule being
+// parsed; it is used to set the sub-rules' Span.
+func parseLogicPayload(payload string, pmap []int) ([]model.Rule, error) {
 	if !strings.HasPrefix(payload, "(") || !strings.HasSuffix(payload, ")") {
 		return nil, errors.New("payload format error")
 	}
@@ -188,9 +221,24 @@ func parseLogicPayload(payload string) ([]model.Rule, error) {
 			return nil, errors.New(sub.Err)
 		}
 		sub.Index = i
+		// Nested spans are relative to sub.Raw = payload[t.start+1:t.end];
+		// both ends of a span sit next to a parenthesis, which maps 1:1.
+		inner := func(j int) int { return pmap[t.start+1+j] }
+		shiftSpans(sub.Subs, func(sp [2]int) [2]int {
+			return [2]int{inner(sp[0]-1) + 1, inner(sp[1])}
+		})
+		sub.Span = [2]int{pmap[t.start] + 1, pmap[t.end]}
 		subs = append(subs, sub)
 	}
 	return subs, nil
+}
+
+// shiftSpans applies f to the Span of every rule in subs, recursively.
+func shiftSpans(subs []model.Rule, f func([2]int) [2]int) {
+	for i := range subs {
+		subs[i].Span = f(subs[i].Span)
+		shiftSpans(subs[i].Subs, f)
+	}
 }
 
 // ParseClassical parses a classical rule-set entry.
