@@ -4,6 +4,10 @@
 #   标签里带 "-"（例如 v1.2.0-rc.1）时标记为预发布。
 # - 推送到 main（没有标签）或手动运行：构建当前提交，更新滚动预发布 "nightly"
 #   （先删掉旧的 nightly Release 和标签，再在当前提交上重新创建）。
+#
+# 发布的文件名直接标明是命令行还是桌面窗口：
+# - 命令行：dnsnitch-cli_<版本>_<系统>_<架构>.zip / .tar.gz
+# - 桌面窗口：dnsnitch-gui_<版本>_windows_amd64.zip
 
 name: Release
 
@@ -81,7 +85,7 @@ jobs:
           go test ./...
 
   cli:
-    name: Build CLI
+    name: Build CLI (Windows / Linux / macOS)
     needs: [meta, test]
     runs-on: ubuntu-latest
     env:
@@ -91,7 +95,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - name: Cross-compile
+      - name: Build and package CLI
         shell: bash
         run: |
           set -euo pipefail
@@ -99,11 +103,11 @@ jobs:
           targets="windows/amd64 windows/arm64 linux/amd64 linux/arm64 darwin/amd64 darwin/arm64"
           for t in $targets; do
             os="${t%/*}"; arch="${t#*/}"
-            name="dnsnitch_${VERSION}_${os}_${arch}"
+            name="dnsnitch-cli_${VERSION}_${os}_${arch}"
             ext=""; [[ "$os" == windows ]] && ext=".exe"
             stage="build/$name"
             mkdir -p "$stage"
-            echo "::group::$os/$arch"
+            echo "::group::CLI $os/$arch"
             CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" \
               go build -trimpath -ldflags "-s -w" -o "$stage/dnsnitch$ext" ./cmd/dnsnitch
             cp LICENSE README.md README.zh-CN.md "$stage/"
@@ -117,7 +121,7 @@ jobs:
           ls -l dist
       - uses: actions/upload-artifact@v7
         with:
-          name: cli
+          name: dnsnitch-cli
           path: dist/*
           if-no-files-found: error
 
@@ -157,11 +161,11 @@ jobs:
             fs.writeFileSync(f, JSON.stringify(j, null, 2) + "\n");
           '
           grep productVersion wails.json
-      - name: Build
+      - name: Build GUI
         shell: bash
         working-directory: gui
         run: wails build -clean -trimpath -platform windows/amd64
-      - name: Package
+      - name: Package GUI
         shell: pwsh
         run: |
           $name = "dnsnitch-gui_${env:VERSION}_windows_amd64"
@@ -171,7 +175,7 @@ jobs:
           Get-ChildItem dist
       - uses: actions/upload-artifact@v7
         with:
-          name: gui-windows
+          name: dnsnitch-gui-windows
           path: dist/*
           if-no-files-found: error
 
